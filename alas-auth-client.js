@@ -69,22 +69,6 @@
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(payload)); } catch (e) {}
   }
 
-  /* ── Sesión en sessionStorage formato app.js (cri_user) ──── */
-  function saveCriSession(payload) {
-    try {
-      var criSession = {
-        user: {
-          nombre: payload.name  || payload.email || 'Operador',
-          rol:    payload.role  || 'visor',
-          id:     payload.userId,
-          email:  payload.email,
-        },
-        exp: payload.exp || (Date.now() + 8 * 60 * 60 * 1000),
-      };
-      sessionStorage.setItem('cri_user', JSON.stringify(criSession));
-    } catch (e) {}
-  }
-
   function loadSession() {
     try {
       var raw = localStorage.getItem(SESSION_KEY);
@@ -128,7 +112,6 @@
       var payload = await verifyToken(decodeURIComponent(rawToken));
       if (payload) {
         saveSession(payload);
-        saveCriSession(payload);
         buildAuthClient(payload);
         console.info('[ALAS SSO] Sesión establecida. Usuario:', payload.name, '| Rol:', payload.role);
         return;
@@ -138,7 +121,6 @@
 
     var stored = loadSession();
     if (stored) {
-      saveCriSession(stored); // sincrónico — app.js lo lee antes de mostrar login
       buildAuthClient(stored);
       console.info('[ALAS SSO] Sesión restaurada. Usuario:', stored.name);
       return;

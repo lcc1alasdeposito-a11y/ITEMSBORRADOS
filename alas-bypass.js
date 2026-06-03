@@ -78,19 +78,6 @@
       }
     };
 
-    // Si app.js oculta appMain por sesión expirada → redirigir al Launcher
-    var appMainEl = document.getElementById('appMain');
-    if (appMainEl) {
-      var expiryObserver = new MutationObserver(function () {
-        if (appMainEl.style.display === 'none') {
-          expiryObserver.disconnect();
-          var cfg = window.ALAS_SSO_CONFIG || {};
-          window.location.replace(cfg.launcherUrl || 'https://launcher-tawny.vercel.app');
-        }
-      });
-      expiryObserver.observe(appMainEl, { attributes: true, attributeFilter: ['style'] });
-    }
-
     // Arrancar la app
     if (typeof window.renderDashboard    === 'function') window.renderDashboard();
     if (typeof window.startNotifPolling  === 'function') window.startNotifPolling(true);
@@ -100,11 +87,9 @@
   }
 
   function showLocalLogin() {
-    // Sin SSO válido → redirigir al Launcher en vez de mostrar login local
+    // No hay SSO válido → remover el overlay preventivo y dejar que app.js muestre el login
     removePreemptiveStyle();
-    console.info('[ALAS BYPASS] Sin sesión SSO. Redirigiendo al Launcher...');
-    var cfg = window.ALAS_SSO_CONFIG || {};
-    window.location.replace(cfg.launcherUrl || 'https://launcher-tawny.vercel.app');
+    console.info('[ALAS BYPASS] Sin SSO válido. Login local activo.');
   }
 
   // Esperar a que SSO auth resuelva Y app.js haya definido sus funciones
