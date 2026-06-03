@@ -3516,7 +3516,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .dash-grid .dash-card {
-  will-change: transform, opacity;
   animation: dashCardEnter 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .dash-grid .dash-card:nth-child(1) { animation-delay: 180ms; }
@@ -3531,7 +3530,6 @@
 }
 .items-table tbody tr {
   animation: rowSlideIn 0.26s ease both;
-  will-change: transform, opacity;
 }
 .items-table tbody tr:nth-child(1)    { animation-delay:  15ms; }
 .items-table tbody tr:nth-child(2)    { animation-delay:  35ms; }
@@ -3671,11 +3669,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* 12. Loader-main — overlay más sutil con blur */
+/* 12. Loader-main — overlay sólido, sin blur para mejor rendimiento */
 .loader-main {
-  background: rgba(255, 255, 255, 0.60) !important;
-  backdrop-filter: blur(6px) !important;
-  -webkit-backdrop-filter: blur(6px) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
 }
 
 /* 13. Promueve GPU en contenedores animados frecuentes */
