@@ -68,14 +68,23 @@
       if (btnImport) btnImport.style.display = 'flex';
     }
 
-    // Sobreescribir logout() para que vuelva al launcher
-    window.logout = function () {
+    // Sobreescribir logout() y doSessionExpired() para que vuelvan al launcher
+    function redirectToLauncher() {
       if (window.AlasAuthClient && typeof window.AlasAuthClient.logout === 'function') {
         window.AlasAuthClient.logout();
       } else {
         var cfg = window.ALAS_SSO_CONFIG || {};
         window.location.replace(cfg.launcherUrl || 'https://launcher-tawny.vercel.app');
       }
+    }
+
+    window.logout = redirectToLauncher;
+
+    window.doSessionExpired = function () {
+      try { sessionStorage.removeItem('cri_user'); } catch (e) {}
+      window.currentUser = null;
+      if (typeof window.stopNotifPolling === 'function') window.stopNotifPolling();
+      redirectToLauncher();
     };
 
     // Arrancar la app
