@@ -66,6 +66,11 @@
   </style>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="modelo-visual.css">
+  <style>
+    /* Login eliminado — acceso solo via SSO del Launcher.
+       !important supera el inline style que app.js pueda aplicar. */
+    #loginOverlay { display: none !important; }
+  </style>
 </head>
 <body>
   <div id="loader">
@@ -81,6 +86,10 @@
     </div>
   </div>
 
+
+  <!-- loginOverlay eliminado — SSO del Launcher es el único acceso.
+       El div vacío existe para que app.js no crashee en sus referencias. -->
+  <div id="loginOverlay" style="display:none"></div>
 
   <div id="alas-root">
   <div class="layout" id="appMain" style="display:none;">
