@@ -98,6 +98,18 @@
     } catch (e) {}
   }
 
+  /* ── BroadcastChannel — sincroniza logout entre pestañas del mismo origen ── */
+  var _bc = null;
+  try {
+    _bc = new BroadcastChannel('alas-session');
+    _bc.onmessage = function (e) {
+      if (e.data === 'logout') {
+        clearSession();
+        window.location.replace(LAUNCHER_URL);
+      }
+    };
+  } catch (_) {}
+
   /* ── API pública ─────────────────────────────────────────── */
   function buildAuthClient(session) {
     window.AlasAuthClient = {
@@ -107,6 +119,7 @@
       getRole:        function () { return session.role; },
       hasPermission:  function (key) { return Array.isArray(session.permissions) && session.permissions.indexOf(key) !== -1; },
       logout: function () {
+        try { if (_bc) _bc.postMessage('logout'); } catch (_) {}
         clearSession();
         window.location.replace(LAUNCHER_URL);
       }
