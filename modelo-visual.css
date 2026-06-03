@@ -216,6 +216,20 @@ body {
   justify-content: center;
   flex-shrink: 0;
   border: 1.5px solid rgba(255,255,255,.25);
+  position: relative;
+}
+
+/* Punto verde de estado online en el avatar */
+.sidebar-avatar-icon .online-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  background: #10B981;
+  border-radius: 50%;
+  border: 2px solid #0f172a;
+  flex-shrink: 0;
 }
 
 /* ── Stage: área de contenido ─────────────────────────────── */
