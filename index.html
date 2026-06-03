@@ -402,16 +402,27 @@
 
     document.addEventListener('DOMContentLoaded', function () {
       var triggered = false;
-      var obs = new MutationObserver(function () {
-        var el = document.getElementById('appMain');
+      var obs;
+
+      function checkAndEnter(el) {
         if (!triggered && el && el.style.display !== 'none') {
           triggered = true;
-          obs.disconnect();
+          if (obs) obs.disconnect();
           ALASTransition.enterProject();
         }
+      }
+
+      obs = new MutationObserver(function () {
+        checkAndEnter(document.getElementById('appMain'));
       });
+
       var appMainEl = document.getElementById('appMain');
-      if (appMainEl) obs.observe(appMainEl, { attributes: true, attributeFilter: ['style'] });
+      if (appMainEl) {
+        obs.observe(appMainEl, { attributes: true, attributeFilter: ['style'] });
+        // Si un script defer ya puso display:flex antes de que DOMContentLoaded disparara,
+        // el observer lo habría perdido — verificar el estado actual inmediatamente.
+        checkAndEnter(appMainEl);
+      }
     });
 
     function alasGoToLauncher() {
