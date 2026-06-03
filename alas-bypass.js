@@ -16,6 +16,8 @@
     admin:      'Administrador',
     supervisor: 'Supervisor',
     operario:   'Operario',
+    operador:   'Operador',   // rol del Launcher equivalente a operario
+    invitado:   'Invitado',
     visor:      'Visor',
   };
 
@@ -63,7 +65,7 @@
       if (adminTitle)    adminTitle.style.display    = 'block';
       if (btnAdminUsers) btnAdminUsers.style.display = 'flex';
     }
-    if (role === 'admin' || role === 'operario') {
+    if (role === 'admin' || role === 'operario' || role === 'operador') {
       var btnImport = document.getElementById('btnImport');
       if (btnImport) btnImport.style.display = 'flex';
     }
