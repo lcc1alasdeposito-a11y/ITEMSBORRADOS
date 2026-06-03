@@ -1,0 +1,370 @@
+/* ==============================================================
+   MODELO VISUAL — itemsborrados
+   Capa de diseño aplicada sobre styles.css.
+   Design system: MODELO PROYECTO (sidebar azul, card blanca).
+   ============================================================== */
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+  --primary:        #0B5F8D;
+  --primary-dark:   #08486A;
+  --accent:         #3B82F6;
+  --accent-soft:    #DBEAFE;
+  --success:        #10B981;
+  --success-soft:   #D1FAE5;
+  --warning:        #F59E0B;
+  --danger:         #EF4444;
+  --gray-50:        #F8FAFC;
+  --gray-100:       #F1F5F9;
+  --gray-200:       #E2E8F0;
+  --gray-300:       #CBD5E1;
+  --gray-400:       #94A3B8;
+  --gray-500:       #64748B;
+  --gray-600:       #475569;
+  --gray-700:       #334155;
+  --white:          #fff;
+  --text:           #1A1A1A;
+  --muted:          #6B7280;
+  --line:           #E5E7EB;
+  --soft-line:      #F0F0F0;
+  --radius:         14px;
+  --radius-xl:      24px;
+  --fast:           150ms cubic-bezier(.4,0,.2,1);
+  --base:           220ms cubic-bezier(.4,0,.2,1);
+
+  /* Aliases para variables del tema oscuro de styles.css */
+  --text-muted:     var(--gray-500);
+  --text-primary:   var(--gray-700);
+  --bg-primary:     var(--white);
+  --bg-secondary:   var(--gray-50);
+  --border-color:   var(--line);
+}
+
+/* ── Body ──────────────────────────────────────────────────── */
+body {
+  background: linear-gradient(160deg, #9CA3AF 0%, #C4CAD4 50%, #E5E7EB 100%) !important;
+  color: var(--gray-700) !important;
+  font-family: Inter, "DM Sans", system-ui, -apple-system, Segoe UI, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Shell principal ───────────────────────────────────────── */
+.layout {
+  min-height: 100vh;
+  padding: 16px;
+  display: flex;
+  align-items: stretch;
+}
+
+.system-shell {
+  position: relative;
+  flex: 1;
+  display: flex;
+  height: calc(100vh - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 40px rgba(0,0,0,.12);
+}
+
+/* ── Sidebar wave colapsable ───────────────────────────────── */
+.sidebar-wave {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 64px;
+  overflow: hidden;
+  transition: width .38s cubic-bezier(.4,0,.2,1);
+  background: linear-gradient(180deg, #0e6fa8 0%, #0B5F8D 55%, #084f78 100%);
+  display: flex;
+  align-items: stretch;
+  padding: 16px 10px;
+  z-index: 20;
+  box-shadow: 3px 0 10px rgba(0,0,0,.12), inset -1px 0 0 rgba(255,255,255,.06);
+}
+.sidebar-wave:hover { width: 210px; }
+
+.sidebar-icons {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-spacer { flex: 1; }
+
+/* sidebar-nav wrapper — solo existe para que app.js encuentre .sidebar-nav .tab */
+.sidebar-wave .sidebar-nav {
+  display: contents;
+}
+
+.sidebar-icon {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 13px;
+  color: rgba(255,255,255,.60);
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: background .22s ease, color .22s ease, box-shadow .22s ease;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+.sidebar-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.75;
+  flex-shrink: 0;
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+}
+.sidebar-icon:hover                    { color: #fff; background: rgba(255,255,255,.10); }
+.sidebar-icon:hover svg                { transform: scale(1.08); }
+.sidebar-icon.on,
+.sidebar-icon.active                   { background: rgba(255,255,255,.15) !important; color: #fff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important; }
+.sidebar-icon.on:hover,
+.sidebar-icon.active:hover             { background: rgba(255,255,255,.20) !important; }
+
+/* Neutralizar reglas .tab de styles.css que rompen el layout del sidebar */
+.sidebar-icon.tab {
+  flex: 0 0 auto !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 0 13px !important;
+  border-radius: 8px !important;
+  min-height: 46px !important;
+  height: 46px !important;
+  transform: none !important;
+  color: rgba(255,255,255,.60) !important;
+}
+.sidebar-icon.tab:hover {
+  background: rgba(255,255,255,.10) !important;
+  color: #fff !important;
+  transform: none !important;
+}
+.sidebar-icon.tab.on {
+  background: rgba(255,255,255,.15) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+.sidebar-icon.tab.on:hover {
+  background: rgba(255,255,255,.20) !important;
+}
+.sidebar-icon.tab svg {
+  width: 22px !important;
+  height: 22px !important;
+  flex-shrink: 0 !important;
+}
+
+.sidebar-icon .tooltip {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .1px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity .25s cubic-bezier(.4,0,.2,1) .08s,
+              transform .28s cubic-bezier(.4,0,.2,1) .08s;
+}
+.sidebar-wave:hover .sidebar-icon .tooltip { opacity: 1; transform: translateX(0); }
+
+/* Logo en la parte superior del sidebar */
+.sidebar-logo-top {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+.sidebar-logo-top-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  opacity: .9;
+}
+
+/* Separador de sección */
+.sidebar-section-sep {
+  height: 1px;
+  background: rgba(255,255,255,.12);
+  margin: 4px 2px;
+  flex-shrink: 0;
+}
+
+/* Avatar del usuario en el sidebar */
+.sidebar-avatar-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,.25);
+}
+
+/* ── Stage: área de contenido ─────────────────────────────── */
+.stage {
+  flex: 1;
+  margin-left: 64px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--white);
+}
+
+/* ── Logo al lado del título en topbar ─────────────────────── */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar-left .top-brand {
+  margin: 0;
+  line-height: 1;
+}
+.topbar-logo-brand {
+  height: 44px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+  flex-shrink: 0;
+  /* Convierte el logo blanco a azul accent (#3B82F6) */
+  filter: brightness(0) saturate(100%) invert(44%) sepia(71%) saturate(1083%) hue-rotate(196deg) brightness(97%);
+}
+
+/* ── Topbar (override tema oscuro) ────────────────────────── */
+.topbar {
+  background: var(--white) !important;
+  border-bottom: 1px solid var(--line) !important;
+  color: var(--gray-700) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
+  flex-shrink: 0;
+}
+.top-brand     { color: var(--gray-700) !important; font-weight: 700; }
+.top-icon-btn  { color: var(--gray-500) !important; background: transparent !important; border-radius: 8px !important; }
+.top-icon-btn:hover { color: var(--gray-700) !important; background: var(--gray-100) !important; }
+.top-update    { color: var(--gray-400) !important; }
+.top-status    { color: var(--gray-500) !important; background: var(--gray-100) !important; border-radius: 99px; padding: 4px 10px; font-size: 12px; }
+.status-dot    { background: var(--success) !important; }
+
+/* Dropdown notificaciones */
+.top-notif-dropdown {
+  background: var(--white) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.10) !important;
+  color: var(--gray-700) !important;
+  border-radius: var(--radius) !important;
+}
+.top-notif-head {
+  color: var(--gray-700) !important;
+  border-bottom: 1px solid var(--line) !important;
+  font-weight: 700;
+  font-size: 13px;
+}
+.top-notif-empty { color: var(--gray-400) !important; }
+
+/* Barra de progreso GIP */
+.gip-bar  { background: var(--gray-200) !important; }
+.gip-fill { background: var(--accent) !important; }
+.gip-pct  { color: var(--gray-600) !important; }
+
+/* Badge de notificaciones */
+.notif-badge { background: var(--danger) !important; color: var(--white) !important; }
+
+/* ── Área principal ───────────────────────────────────────── */
+.main {
+  background: var(--gray-50) !important;
+  color: var(--gray-700) !important;
+  overflow-y: auto !important;
+  flex: 1;
+}
+
+.vw {
+  background: transparent !important;
+  color: var(--gray-700) !important;
+}
+
+/* Loader de carga dentro del main */
+.loader-main {
+  background: rgba(248,250,252,.88) !important;
+  backdrop-filter: blur(4px) !important;
+  color: var(--gray-500) !important;
+}
+.loader-main .custom-loader-line {
+  background: var(--gray-200) !important;
+}
+
+/* ── Modales (override tema oscuro) ──────────────────────── */
+.modal-overlay {
+  background: rgba(15,23,42,.42) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+.modal-box {
+  background: var(--white) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 0 20px 60px rgba(0,102,204,.18), 0 4px 16px rgba(0,0,0,.08) !important;
+  color: var(--gray-700) !important;
+  border: 0 !important;
+}
+.modal-head {
+  background: var(--white) !important;
+  border-bottom: 1px solid var(--line) !important;
+  color: var(--gray-700) !important;
+}
+.modal-head h3 { color: var(--gray-700) !important; font-weight: 800; }
+.modal-close {
+  color: var(--gray-500) !important;
+  background: transparent !important;
+  border-radius: 50% !important;
+  transition: all .16s ease;
+}
+.modal-close:hover { background: #FEF2F2 !important; color: var(--danger) !important; }
+.modal-body        { color: var(--gray-700) !important; background: var(--white) !important; }
+
+/* Modal de formato de hoja */
+.import-ref-table    { color: var(--gray-700) !important; }
+.import-ref-table th { background: var(--gray-100) !important; color: var(--gray-600) !important; }
+.import-ref-table td { border-color: var(--line) !important; }
+.import-ref-note     { color: var(--gray-500) !important; }
+
+/* Modal de fecha */
+.date-modal-box    { background: var(--white) !important; border-radius: var(--radius-xl) !important; color: var(--gray-700) !important; }
+.date-modal-body   { background: var(--white) !important; }
+.date-modal-footer { background: var(--gray-50) !important; border-top: 1px solid var(--line) !important; }
+.date-section-title { color: var(--accent) !important; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
+.date-custom-range  { color: var(--gray-700) !important; }
+.date-field-label   { color: var(--gray-500) !important; font-size: 12px; }
+.date-input-wrap    { border: 1.5px solid var(--gray-300) !important; border-radius: 10px !important; background: var(--white) !important; }
+.date-input         { background: transparent !important; color: var(--gray-700) !important; border: 0 !important; }
+.date-quick-btn {
+  background: var(--white) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--gray-700) !important;
+  border-radius: 10px !important;
+}
+.date-quick-btn:hover   { border-color: var(--accent) !important; color: var(--accent) !important; background: var(--accent-soft) !important; }
+.date-quick-btn-danger  { border-color: #FECACA !important; color: var(--danger) !important; }
+.date-quick-btn-label   { font-weight: 600; }
+.date-quick-btn-sub     { color: var(--gray-400) !important; font-size: 11px; }
+.date-apply-btn         { background: var(--accent) !important; color: var(--white) !important; border-radius: 9px !important; font-weight: 700; }
+.date-footer-btn        { background: var(--white) !important; border: 1px solid var(--line) !important; color: var(--gray-600) !important; border-radius: 9px !important; }
+.date-footer-info       { color: var(--gray-400) !important; font-size: 12px; }
+.date-divider           { background: var(--line) !important; }
+.date-range-arrow svg   { color: var(--gray-400) !important; }

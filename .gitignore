@@ -1,0 +1,18 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno y secretos
+.env
+.env.local
+alas-sso-config.js
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build / minificados opcionales (el source está en app.js y styles.css)
+# app.min.js
+# styles.min.css
