@@ -83,6 +83,21 @@
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
   }
 
+  /* ── Sesión en sessionStorage formato app.js ────────────── */
+  function saveCriSession(payload) {
+    try {
+      sessionStorage.setItem('cri_user', JSON.stringify({
+        user: {
+          nombre: payload.name  || payload.email || 'Operador',
+          rol:    payload.role  || 'visor',
+          id:     payload.userId,
+          email:  payload.email,
+        },
+        exp: payload.exp || (Date.now() + 8 * 60 * 60 * 1000),
+      }));
+    } catch (e) {}
+  }
+
   /* ── API pública ─────────────────────────────────────────── */
   function buildAuthClient(session) {
     window.AlasAuthClient = {
@@ -112,6 +127,7 @@
       var payload = await verifyToken(decodeURIComponent(rawToken));
       if (payload) {
         saveSession(payload);
+        saveCriSession(payload);
         buildAuthClient(payload);
         console.info('[ALAS SSO] Sesión establecida. Usuario:', payload.name, '| Rol:', payload.role);
         return;
@@ -121,6 +137,7 @@
 
     var stored = loadSession();
     if (stored) {
+      saveCriSession(stored); // sincrónico — app.js lo lee antes de mostrar login
       buildAuthClient(stored);
       console.info('[ALAS SSO] Sesión restaurada. Usuario:', stored.name);
       return;

@@ -87,9 +87,10 @@
   }
 
   function showLocalLogin() {
-    // No hay SSO válido → remover el overlay preventivo y dejar que app.js muestre el login
     removePreemptiveStyle();
-    console.info('[ALAS BYPASS] Sin SSO válido. Login local activo.');
+    console.info('[ALAS BYPASS] Sin sesión SSO. Redirigiendo al Launcher...');
+    var cfg = window.ALAS_SSO_CONFIG || {};
+    window.location.replace(cfg.launcherUrl || 'https://launcher-tawny.vercel.app');
   }
 
   // Esperar a que SSO auth resuelva Y app.js haya definido sus funciones
