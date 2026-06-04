@@ -13825,13 +13825,12 @@ async function exportarExcelDashboard() {
     var btn = document.getElementById('btnExportarExcel');
     if (btn) { btn.disabled = true; btn.innerHTML = SVG_DOWN + ' Generando...'; }
     try {
-        // Carga SheetJS desde CDN solo la primera vez que se usa
         if (typeof XLSX === 'undefined') {
             await new Promise(function(resolve, reject) {
                 var s = document.createElement('script');
                 s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
                 s.onload = resolve;
-                s.onerror = function() { reject(new Error('No se pudo cargar la librería. Verificá tu conexión a internet.')); };
+                s.onerror = function() { reject(new Error('No se pudo cargar la librería. Verificá tu conexión.')); };
                 document.head.appendChild(s);
             });
         }
@@ -13847,48 +13846,134 @@ async function exportarExcelDashboard() {
             { key: 'no_recuperado', label: 'No Recuperados' },
         ];
 
+        // type: 'date' → serial Excel + formato dd/mm/yyyy
+        // type: 'money' → número entero con separador de miles
+        // type: 'number' → número entero
         var COLS = [
-            { key: 'fecha_carga',      header: 'Fecha Carga'      },
-            { key: 'doc_vtas',         header: 'Doc. Ventas'      },
-            { key: 'material',         header: 'Material'         },
-            { key: 'denominacion',     header: 'Denominación'     },
-            { key: 'nombre',           header: 'Cliente'          },
-            { key: 'solic',            header: 'Solic.'           },
-            { key: 'vendedor_externo', header: 'Vendedor Externo' },
-            { key: 'vendedor_interno', header: 'Vendedor Interno' },
-            { key: 'almacen',          header: 'Almacén'          },
-            { key: 'cant_pedido',      header: 'Cant. Pedido'     },
-            { key: 'cant_recibida',    header: 'Cant. Recibida'   },
-            { key: 'cant_fact',        header: 'Cant. Fact.'      },
-            { key: 'total_importe',    header: 'Total Importe'    },
-            { key: 'motiv_rech',       header: 'Motivo Rechazo'   },
-            { key: 'estado',           header: 'Estado'           },
+            { key: 'fecha_carga',      header: 'Fecha Carga',      type: 'date'   },
+            { key: 'doc_vtas',         header: 'Doc. Ventas',       type: 'text'   },
+            { key: 'material',         header: 'Material',          type: 'text'   },
+            { key: 'denominacion',     header: 'Denominación',      type: 'text'   },
+            { key: 'nombre',           header: 'Cliente',           type: 'text'   },
+            { key: 'solic',            header: 'Solic.',            type: 'text'   },
+            { key: 'vendedor_externo', header: 'Vendedor Externo',  type: 'text'   },
+            { key: 'vendedor_interno', header: 'Vendedor Interno',  type: 'text'   },
+            { key: 'almacen',          header: 'Almacén',           type: 'text'   },
+            { key: 'cant_pedido',      header: 'Cant. Pedido',      type: 'number' },
+            { key: 'cant_recibida',    header: 'Cant. Recibida',    type: 'number' },
+            { key: 'cant_fact',        header: 'Cant. Fact.',       type: 'number' },
+            { key: 'total_importe',    header: 'Total Importe',     type: 'money'  },
+            { key: 'motiv_rech',       header: 'Motivo Rechazo',    type: 'text'   },
+            { key: 'estado',           header: 'Estado',            type: 'text'   },
         ];
 
-        // Fetch los 4 estados en paralelo respetando el filtro de fecha activo
+        // Convierte ISO string a número serial de Excel (días desde 1/1/1900)
+        // Usa fecha UTC para evitar desfases de timezone
+        function toExcelSerial(isoStr) {
+            if (!isoStr) return null;
+            var d = new Date(isoStr);
+            if (isNaN(d.getTime())) return null;
+            var utc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            return (utc - Date.UTC(1899, 11, 30)) / 86400000;
+        }
+
         var results = await Promise.all(ESTADOS_EXPORT.map(function(e) {
             return db_getItems({ estado: e.key, limit: 0, fecha_desde: desde, fecha_hasta: hasta });
         }));
 
         var wb = XLSX.utils.book_new();
+        var now = new Date();
+
+        // ── Hoja 1: Resumen ───────────────────────────────────────────────
+        var periodoStr = dashState.desde && dashState.hasta
+            ? dashState.desde.split('-').reverse().join('/') + ' — ' + dashState.hasta.split('-').reverse().join('/')
+            : 'Todos los períodos';
+        var nowStr = now.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        var resumenAoa = [
+            ['Reporte de Pedidos Recuperados — ALAS Logística'],
+            ['Período:', periodoStr],
+            ['Generado:', nowStr],
+            [],
+            ['Estado', 'Cantidad de Items', 'Total Importe (Gs.)'],
+        ];
+        var totalItems = 0, totalMonto = 0;
+        ESTADOS_EXPORT.forEach(function(e, idx) {
+            var items = results[idx].data || [];
+            var monto = items.reduce(function(acc, r) { return acc + (Number(r.total_importe) || 0); }, 0);
+            totalItems += items.length;
+            totalMonto += monto;
+            resumenAoa.push([e.label, items.length, monto]);
+        });
+        resumenAoa.push(['TOTAL', totalItems, totalMonto]);
+
+        var wsResumen = XLSX.utils.aoa_to_sheet(resumenAoa);
+        // Formato miles en columna C (filas 6 a 10 = índices 5 a 9)
+        for (var ri = 5; ri <= 9; ri++) {
+            var addr = XLSX.utils.encode_cell({ r: ri, c: 2 });
+            if (wsResumen[addr] && wsResumen[addr].t === 'n') wsResumen[addr].z = '#,##0';
+        }
+        wsResumen['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 26 }];
+        XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+        // ── Hojas por estado ──────────────────────────────────────────────
         var headers = COLS.map(function(c) { return c.header; });
 
         ESTADOS_EXPORT.forEach(function(e, idx) {
             var items = results[idx].data || [];
-            var rows = items.map(function(item) {
-                var row = {};
-                COLS.forEach(function(c) { row[c.header] = item[c.key] != null ? item[c.key] : ''; });
-                return row;
+
+            // Construir AoA con tipos correctos desde el origen
+            var aoa = [headers];
+            items.forEach(function(item) {
+                var row = COLS.map(function(c) {
+                    var v = item[c.key];
+                    if (c.type === 'date') {
+                        return toExcelSerial(v); // número → Excel lo trata como fecha
+                    }
+                    if (c.type === 'money' || c.type === 'number') {
+                        var n = Number(v);
+                        return isNaN(n) ? '' : n;
+                    }
+                    return v != null ? String(v) : '';
+                });
+                aoa.push(row);
             });
-            // Hoja vacía igualmente muestra encabezados
-            var ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{}], { header: headers });
-            ws['!cols'] = headers.map(function(h) { return { wch: Math.max(14, h.length + 4) }; });
+
+            var ws = XLSX.utils.aoa_to_sheet(aoa);
+
+            // Aplicar formatos de display a las celdas numéricas
+            var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+            COLS.forEach(function(col, ci) {
+                if (col.type === 'text') return;
+                var fmt = col.type === 'date' ? 'dd/mm/yyyy' : '#,##0';
+                for (var r = 1; r <= range.e.r; r++) {
+                    var cell = ws[XLSX.utils.encode_cell({ r: r, c: ci })];
+                    if (cell && cell.t === 'n') cell.z = fmt;
+                }
+            });
+
+            // Fila de encabezado congelada
+            ws['!sheetViews'] = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
+
+            // Autofiltro sobre todo el rango
+            ws['!autofilter'] = { ref: ws['!ref'] };
+
+            // Anchos de columna por tipo de dato
+            ws['!cols'] = COLS.map(function(c) {
+                if (c.type === 'date')                                        return { wch: 14 };
+                if (c.type === 'money')                                       return { wch: 20 };
+                if (c.type === 'number')                                      return { wch: 14 };
+                if (c.key === 'denominacion' || c.key === 'nombre')           return { wch: 32 };
+                if (c.key === 'vendedor_externo' || c.key === 'vendedor_interno') return { wch: 22 };
+                return { wch: 18 };
+            });
+
             XLSX.utils.book_append_sheet(wb, ws, e.label);
         });
 
         var fileDateLabel = dashState.desde && dashState.hasta
             ? dashState.desde + '_' + dashState.hasta
-            : new Date().toISOString().slice(0, 10);
+            : now.toISOString().slice(0, 10);
         XLSX.writeFile(wb, 'pedidos_recuperados_' + fileDateLabel + '.xlsx');
 
     } catch (err) {
