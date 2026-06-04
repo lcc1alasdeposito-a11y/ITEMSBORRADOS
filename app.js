@@ -14188,22 +14188,20 @@ async function exportarExcelDashboard() {
             return { ldal: ldal, ldfa: ldfa, ldlq: ldlq, lftd: lftd, total: ldal + ldfa + ldlq + lftd };
         }
 
-        // FIX #1 — Clasificar por stock ACTUAL, no por estado
-        // Sin Stock: pendiente + sin_stock donde stock actual < cantidad_pedido
+        // Sin Stock: stock total = 0 (sin ninguna unidad disponible)
         var sinStockItems = marcadosSinStock.concat(pendienteItems).filter(function(item) {
-            var ped = Number(item.cantidad_pedido) || 0;
-            return enrichStock(item).total < ped;
+            return enrichStock(item).total <= 0;
         });
 
-        // Con Stock: pendientes donde stock actual >= cantidad_pedido
-        var conStockItems = pendienteItems.filter(function(item) {
-            var ped = Number(item.cantidad_pedido) || 0;
-            return ped > 0 && enrichStock(item).total >= ped;
+        // Con Stock: tiene al menos 1 unidad (incluye parciales)
+        // Filas con stock < pedido se resaltan en rojo suave en el render
+        var conStockItems = marcadosSinStock.concat(pendienteItems).filter(function(item) {
+            return enrichStock(item).total > 0;
         });
 
         var CFG_SHEETS = [
             { name: 'Sin Stock', items: sinStockItems, hdrBg: 'FFFEE2E2', hdrText: 'FF991B1B', showFaltante: true  },
-            { name: 'Con Stock', items: conStockItems, hdrBg: 'FFD1FAE5', hdrText: 'FF065F46', showFaltante: false },
+            { name: 'Con Stock', items: conStockItems, hdrBg: 'FFD1FAE5', hdrText: 'FF065F46', showFaltante: true  },
         ];
         CFG_SHEETS.forEach(function(cfg) {
 
@@ -14281,11 +14279,11 @@ async function exportarExcelDashboard() {
                 // Filas de items
                 vitems.forEach(function(item, idx) {
                     var dRow = ws.getRow(ri); dRow.height = 18;
-                    var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
                     var sk  = enrichStock(item);
                     var st  = sk.total;
                     var ped = Number(item.cantidad_pedido) || 0;
-                    dRow.height = 18;
+                    // Rojo suave si tiene stock pero no alcanza para cubrir el pedido
+                    var rf = (st > 0 && st < ped) ? 'FFFEF2F2' : (idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC');
 
                     SCOLS.forEach(function(c, ci) {
                         var cell = dRow.getCell(ci + 1);
