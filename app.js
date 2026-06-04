@@ -14153,16 +14153,21 @@ async function exportarExcelDashboard() {
         var stkFetch = await Promise.all([
             db_getItems({ estado: 'sin_stock', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
             db_getItems({ estado: 'pendiente', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
-            sup.from('stock').select('material, cantidad'),
+            sup.from('stock').select('material, almacen, cantidad'),
         ]);
         var marcadosSinStock = stkFetch[0].data || [];
         var pendienteItems   = stkFetch[1].data || [];
 
-        // Mapa material → stock total (suma todos los almacenes)
+        // Mapa material → stock total y desglose por almacén
         var stockMap = {};
+        var stockByAlmacen = {};
         (stkFetch[2].data || []).forEach(function(s) {
             var mat = String(s.material || '').trim().toUpperCase();
-            if (mat) stockMap[mat] = (stockMap[mat] || 0) + (Number(s.cantidad) || 0);
+            if (!mat) return;
+            stockMap[mat] = (stockMap[mat] || 0) + (Number(s.cantidad) || 0);
+            var alm = String(s.almacen || '').trim() || 'Sin almacén';
+            if (!stockByAlmacen[mat]) stockByAlmacen[mat] = {};
+            stockByAlmacen[mat][alm] = (stockByAlmacen[mat][alm] || 0) + (Number(s.cantidad) || 0);
         });
 
         // Con Stock: pendientes donde stock >= lo pedido (puede cumplirse)
@@ -14194,7 +14199,8 @@ async function exportarExcelDashboard() {
                 { key: 'nombre',       header: 'Cliente',          type: 'text',   width: 28 },
                 { key: 'solic',        header: 'Solic.',           type: 'text',   width: 14 },
                 { key: 'cant_pedido',  header: 'Cant. Pedido',     type: 'number', width: 14 },
-                { key: '__stock__',    header: 'Stock Disponible', type: 'number', width: 16 },
+                { key: '__stock__',     header: 'Stock Total',       type: 'number', width: 14 },
+                { key: '__almacenes__', header: 'Por Almacén',       type: 'text',   width: 34 },
             ];
             if (cfg.showFaltante) SCOLS.push({ key: '__faltante__', header: 'Faltante', type: 'number', width: 14 });
             SCOLS.push({ key: 'total_importe', header: 'Total Importe', type: 'money', width: 20 });
@@ -14260,11 +14266,22 @@ async function exportarExcelDashboard() {
                     var mat = String(item.material || '').trim().toUpperCase();
                     var st  = stockMap[mat] || 0;
                     var ped = Number(item.cant_pedido) || 0;
+                    // Altura dinámica según cantidad de almacenes
+                    var numAlm = Object.keys(stockByAlmacen[mat] || {}).length || 1;
+                    dRow.height = Math.max(18, numAlm * 14 + 4);
+
                     SCOLS.forEach(function(c, ci) {
                         var cell = dRow.getCell(ci + 1);
                         if (c.key === '__stock__') {
                             cell.value = st; cell.numFmt = '#,##0';
-                            cell.alignment = aln('right', 'middle');
+                            cell.alignment = aln('right', 'top');
+                        } else if (c.key === '__almacenes__') {
+                            var almInfo = stockByAlmacen[mat] || {};
+                            var almLines = Object.keys(almInfo).sort().map(function(alm) {
+                                return alm + ': ' + (almInfo[alm] || 0);
+                            }).join('\n');
+                            cell.value = almLines || '—';
+                            cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
                         } else if (c.key === '__faltante__') {
                             var falt = Math.max(0, ped - st);
                             cell.value = falt; cell.numFmt = '#,##0';
