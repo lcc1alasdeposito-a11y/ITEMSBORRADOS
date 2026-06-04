@@ -14148,28 +14148,39 @@ async function exportarExcelDashboard() {
             return r;
         }
 
-        // Fetch en paralelo: items sin_stock, items pendiente, tabla stock
+        // FIX #3 — Paso 1: traer items primero
         var sup = getSupabase();
-        var stkFetch = await Promise.all([
+        var itemFetch = await Promise.all([
             db_getItems({ estado: 'sin_stock', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
             db_getItems({ estado: 'pendiente', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
-            sup.from('stock').select('material, almacen, cantidad'),
         ]);
-        var marcadosSinStock = stkFetch[0].data || [];
-        var pendienteItems   = stkFetch[1].data || [];
+        var marcadosSinStock = itemFetch[0].data || [];
+        var pendienteItems   = itemFetch[1].data || [];
 
-        // Mapa igual al que usa el app web: material exacto → { LDAL, LDFA, LDLQ, LFTD }
-        var stockMap = {};
-        (stkFetch[2].data || []).forEach(function(s) {
-            if (!s.material) return;
-            if (!stockMap[s.material]) stockMap[s.material] = {};
-            stockMap[s.material][s.almacen] = Number(s.cantidad) || 0;
+        // FIX #3 — Paso 2: recolectar materiales únicos (con .trim() igual que renderItemsView)
+        // y traer stock solo para esos materiales en batches de 500
+        var matsSet = {}, matsArr = [];
+        marcadosSinStock.concat(pendienteItems).forEach(function(item) {
+            var m = String(item.material || '').trim();
+            if (m && !matsSet[m]) { matsSet[m] = true; matsArr.push(m); }
         });
 
-        // Enriquece un item con stock igual que renderItemsView:
-        // prioriza stock table, hace fallback a valores guardados en el item
+        var stockMap = {};
+        for (var _smi = 0; _smi < matsArr.length; _smi += 500) {
+            var _batch = matsArr.slice(_smi, _smi + 500);
+            var _sr = await sup.from('stock').select('material, almacen, cantidad').in('material', _batch);
+            (_sr.data || []).forEach(function(s) {
+                var skey = String(s.material || '').trim();
+                if (!stockMap[skey]) stockMap[skey] = {};
+                stockMap[skey][s.almacen] = Number(s.cantidad) || 0;
+            });
+        }
+
+        // FIX #2 — enrichStock usa material con .trim() como clave
+        // prioriza stock table actual, fallback a valor guardado en el item
         function enrichStock(item) {
-            var ms   = stockMap[item.material] || {};
+            var mat = String(item.material || '').trim();
+            var ms  = stockMap[mat] || {};
             var ldal = ms['LDAL'] != null ? ms['LDAL'] : (Number(item.stock_ldal) || 0);
             var ldfa = ms['LDFA'] != null ? ms['LDFA'] : (Number(item.stock_ldfa) || 0);
             var ldlq = ms['LDLQ'] != null ? ms['LDLQ'] : (Number(item.stock_ldlq) || 0);
@@ -14177,18 +14188,18 @@ async function exportarExcelDashboard() {
             return { ldal: ldal, ldfa: ldfa, ldlq: ldlq, lftd: lftd, total: ldal + ldfa + ldlq + lftd };
         }
 
-        // Con Stock: pendientes donde stock >= lo pedido (puede cumplirse)
+        // FIX #1 — Clasificar por stock ACTUAL, no por estado
+        // Sin Stock: pendiente + sin_stock donde stock actual < cantidad_pedido
+        var sinStockItems = marcadosSinStock.concat(pendienteItems).filter(function(item) {
+            var ped = Number(item.cantidad_pedido) || 0;
+            return enrichStock(item).total < ped;
+        });
+
+        // Con Stock: pendientes donde stock actual >= cantidad_pedido
         var conStockItems = pendienteItems.filter(function(item) {
             var ped = Number(item.cantidad_pedido) || 0;
             return ped > 0 && enrichStock(item).total >= ped;
         });
-
-        // Sin Stock: marcados + pendientes con stock insuficiente (mismo criterio que la web)
-        var pendientesInsuf = pendienteItems.filter(function(item) {
-            var ped = Number(item.cantidad_pedido) || 0;
-            return enrichStock(item).total < ped;
-        });
-        var sinStockItems = marcadosSinStock.concat(pendientesInsuf);
 
         var CFG_SHEETS = [
             { name: 'Sin Stock', items: sinStockItems, hdrBg: 'FFFEE2E2', hdrText: 'FF991B1B', showFaltante: true  },
