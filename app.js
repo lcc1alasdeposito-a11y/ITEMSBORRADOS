@@ -13089,6 +13089,7 @@ async function startImport(l) {
             setImportProgress(-1)
         }, 3e3);
         _importJob = null; _hideImportBanner();
+        localStorage.setItem("lastImportTime", Date.now().toString()); updateTopTime();
         h.classList.add("done");
         var estadoExtra = "";
         if (contData.length > 0 || factData.length > 0) {
