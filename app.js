@@ -14139,6 +14139,162 @@ async function exportarExcelDashboard() {
             ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: COLS.length } };
         });
 
+        // ── Hojas Sin Stock / Con Stock agrupadas por vendedor ───────────
+        // Helper: índice 1-based → letra de columna Excel
+        function xlCol(n) {
+            var r = '';
+            while (n > 0) { var m = (n - 1) % 26; r = String.fromCharCode(65 + m) + r; n = Math.floor((n - 1) / 26); }
+            return r;
+        }
+
+        // Fetch en paralelo: items sin_stock, items pendiente, tabla stock
+        var sup = getSupabase();
+        var stkFetch = await Promise.all([
+            db_getItems({ estado: 'sin_stock', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
+            db_getItems({ estado: 'pendiente', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
+            sup.from('stock').select('material, cantidad'),
+        ]);
+        var sinStockItems  = stkFetch[0].data || [];
+        var pendienteItems = stkFetch[1].data || [];
+
+        // Mapa material → cantidad total (suma todos los almacenes)
+        var stockMap = {};
+        (stkFetch[2].data || []).forEach(function(s) {
+            var mat = String(s.material || '').trim().toUpperCase();
+            if (mat) stockMap[mat] = (stockMap[mat] || 0) + (Number(s.cantidad) || 0);
+        });
+
+        // Con Stock: pendientes cuyo material tiene stock > 0
+        var conStockItems = pendienteItems.filter(function(item) {
+            return (stockMap[String(item.material || '').trim().toUpperCase()] || 0) > 0;
+        });
+
+        [
+            { name: 'Sin Stock', items: sinStockItems, argb: 'FFB91C1C', showStock: false },
+            { name: 'Con Stock', items: conStockItems, argb: 'FF047857', showStock: true  },
+        ].forEach(function(cfg) {
+
+            var SCOLS = [
+                { key: 'fecha_carga',  header: 'Fecha Carga',     type: 'date',   width: 14 },
+                { key: 'doc_vtas',     header: 'Doc. Ventas',      type: 'text',   width: 16 },
+                { key: 'material',     header: 'Material',         type: 'text',   width: 16 },
+                { key: 'denominacion', header: 'Denominación',     type: 'text',   width: 32 },
+                { key: 'nombre',       header: 'Cliente',          type: 'text',   width: 28 },
+                { key: 'solic',        header: 'Solic.',           type: 'text',   width: 14 },
+                { key: 'cant_pedido',  header: 'Cant. Pedido',     type: 'number', width: 14 },
+            ];
+            if (cfg.showStock) SCOLS.push({ key: '__stock__', header: 'Stock Disponible', type: 'number', width: 18 });
+            SCOLS.push({ key: 'total_importe', header: 'Total Importe', type: 'money', width: 20 });
+
+            var NC = SCOLS.length;
+            var lastColLtr = xlCol(NC);
+            var ws = wb.addWorksheet(cfg.name);
+            ws.columns = SCOLS.map(function(c) { return { width: c.width }; });
+            var ri = 1;
+
+            // Fila 1: Título
+            ws.mergeCells('A1:' + lastColLtr + '1');
+            var tcell = ws.getCell('A1');
+            tcell.value = cfg.name + ' — ' + periodoStr;
+            tcell.fill = fill('FF0F172A'); tcell.font = fnt(true, 12, 'FFFFFFFF');
+            tcell.alignment = aln('center', 'middle'); ws.getRow(1).height = 30;
+
+            // Fila 2: Encabezados de columna
+            var hRow = ws.getRow(2); hRow.height = 22;
+            SCOLS.forEach(function(c, ci) {
+                var cell = hRow.getCell(ci + 1);
+                cell.value = c.header;
+                cell.fill = fill('FF334155'); cell.font = fnt(true, 10, 'FFFFFFFF');
+                cell.alignment = aln(c.type === 'money' || c.type === 'number' ? 'right' : 'left', 'middle');
+                cell.border = brd('FF1E293B');
+            });
+            ri = 3;
+
+            // Freeze: título + encabezados siempre visibles al scrollear
+            ws.views = [{ state: 'frozen', ySplit: 2, topLeftCell: 'A3', activePane: 'bottomLeft' }];
+
+            // Agrupar por vendedor, ordenar mayor importe total primero
+            var vGroups = {};
+            cfg.items.forEach(function(item) {
+                var v = (String(item.vendedor_externo || '').trim()) || 'Sin Vendedor';
+                if (!vGroups[v]) vGroups[v] = [];
+                vGroups[v].push(item);
+            });
+            var vNames = Object.keys(vGroups).sort(function(a, b) {
+                var mA = vGroups[a].reduce(function(s, i) { return s + (Number(i.total_importe) || 0); }, 0);
+                var mB = vGroups[b].reduce(function(s, i) { return s + (Number(i.total_importe) || 0); }, 0);
+                return mB - mA;
+            });
+
+            var gItems = 0, gMonto = 0;
+
+            vNames.forEach(function(ven) {
+                var vitems = vGroups[ven];
+                var vMonto = vitems.reduce(function(s, i) { return s + (Number(i.total_importe) || 0); }, 0);
+                gItems += vitems.length; gMonto += vMonto;
+
+                // Fila header vendedor (color del estado, merged)
+                ws.mergeCells(ri, 1, ri, NC);
+                var vh = ws.getCell(ri, 1);
+                vh.value = ven + '   ·   ' + vitems.length + ' items   ·   Gs. ' + vMonto.toLocaleString('es-PY');
+                vh.fill = fill(cfg.argb); vh.font = fnt(true, 10, 'FFFFFFFF');
+                vh.alignment = aln('left', 'middle'); ws.getRow(ri).height = 22; ri++;
+
+                // Filas de items del vendedor
+                vitems.forEach(function(item, idx) {
+                    var dRow = ws.getRow(ri); dRow.height = 18;
+                    var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
+                    SCOLS.forEach(function(c, ci) {
+                        var cell = dRow.getCell(ci + 1);
+                        if (c.key === '__stock__') {
+                            cell.value = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
+                            cell.numFmt = '#,##0'; cell.alignment = aln('right', 'middle');
+                        } else if (c.type === 'date') {
+                            if (item[c.key]) {
+                                var d = new Date(item[c.key]);
+                                cell.value = isNaN(d.getTime()) ? '' : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+                                cell.numFmt = 'dd/mm/yyyy';
+                            }
+                        } else if (c.type === 'money' || c.type === 'number') {
+                            var n = Number(item[c.key]);
+                            cell.value = isNaN(n) ? 0 : n;
+                            cell.numFmt = '#,##0'; cell.alignment = aln('right', 'middle');
+                        } else {
+                            cell.value = item[c.key] != null ? String(item[c.key]) : '';
+                            cell.alignment = aln('left', 'middle');
+                        }
+                        cell.fill = fill(rf); cell.font = fnt(false, 10, 'FF1E293B');
+                        cell.border = brd('FFE2E8F0');
+                    });
+                    ri++;
+                });
+
+                // Separador visual entre grupos de vendedores
+                ws.getRow(ri).height = 5; ri++;
+            });
+
+            // Sin datos para el período
+            if (vNames.length === 0) {
+                ws.mergeCells(ri, 1, ri, NC);
+                var nd = ws.getCell(ri, 1);
+                nd.value = 'Sin datos para el período seleccionado';
+                nd.font = fnt(false, 10, 'FF94A3B8'); nd.alignment = aln('center', 'middle');
+                ws.getRow(ri).height = 40; ri++;
+            }
+
+            // Fila total general
+            ws.mergeCells(ri, 1, ri, NC - 1);
+            var totCell = ws.getCell(ri, 1);
+            totCell.value = 'TOTAL GENERAL — ' + gItems + ' items';
+            totCell.fill = fill('FF1E293B'); totCell.font = fnt(true, 10, 'FFFFFFFF');
+            totCell.alignment = aln('left', 'middle'); totCell.border = brd('FF0F172A');
+            ws.getRow(ri).height = 26;
+            var totMonto = ws.getCell(ri, NC);
+            totMonto.value = gMonto; totMonto.numFmt = '#,##0';
+            totMonto.fill = fill('FF1E293B'); totMonto.font = fnt(true, 10, 'FFFFFFFF');
+            totMonto.alignment = aln('right', 'middle'); totMonto.border = brd('FF0F172A');
+        });
+
         // ── Descargar ─────────────────────────────────────────────────────
         var buffer = await wb.xlsx.writeBuffer();
         var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
