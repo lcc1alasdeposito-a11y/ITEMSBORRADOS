@@ -14203,9 +14203,12 @@ async function exportarExcelDashboard() {
                 { key: 'denominacion', header: 'Denominación',     type: 'text',   width: 32 },
                 { key: 'nombre',       header: 'Cliente',          type: 'text',   width: 28 },
                 { key: 'solic',        header: 'Solic.',           type: 'text',   width: 14 },
-                { key: 'cantidad_pedido', header: 'Cant. Pedido',    type: 'number', width: 14 },
-                { key: '__stock__',       header: 'Stock Total',     type: 'number', width: 14 },
-                { key: '__almacenes__', header: 'Por Almacén',       type: 'text',   width: 34 },
+                { key: 'cantidad_pedido', header: 'Cant. Pedido',  type: 'number', width: 13 },
+                { key: '__stock__',       header: 'Stock Total',   type: 'number', width: 12 },
+                { key: '__ldal__',        header: 'LDAL',          type: 'number', width: 10 },
+                { key: '__ldfa__',        header: 'LDFA',          type: 'number', width: 10 },
+                { key: '__ldlq__',        header: 'LDLQ',          type: 'number', width: 10 },
+                { key: '__lftd__',        header: 'LFTD',          type: 'number', width: 10 },
             ];
             if (cfg.showFaltante) SCOLS.push({ key: '__faltante__', header: 'Faltante', type: 'number', width: 14 });
             SCOLS.push({ key: 'total_importe', header: 'Total Importe', type: 'money', width: 20 });
@@ -14268,25 +14271,28 @@ async function exportarExcelDashboard() {
                 vitems.forEach(function(item, idx) {
                     var dRow = ws.getRow(ri); dRow.height = 18;
                     var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
-                    var sk  = enrichStock(item);       // misma lógica que renderItemsView
+                    var sk  = enrichStock(item);
                     var st  = sk.total;
                     var ped = Number(item.cantidad_pedido) || 0;
-                    dRow.height = 60;                  // 4 almacenes × ~14px + padding
+                    dRow.height = 18;
 
                     SCOLS.forEach(function(c, ci) {
                         var cell = dRow.getCell(ci + 1);
                         if (c.key === '__stock__') {
                             cell.value = st; cell.numFmt = '#,##0';
-                            cell.alignment = aln('right', 'top');
-                        } else if (c.key === '__almacenes__') {
-                            var almLines = [
-                                'LDAL: ' + sk.ldal,
-                                'LDFA: ' + sk.ldfa,
-                                'LDLQ: ' + sk.ldlq,
-                                'LFTD: ' + sk.lftd,
-                            ].join('\n');
-                            cell.value = almLines;
-                            cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
+                            cell.alignment = aln('right', 'middle');
+                        } else if (c.key === '__ldal__') {
+                            cell.value = sk.ldal; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
+                        } else if (c.key === '__ldfa__') {
+                            cell.value = sk.ldfa; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
+                        } else if (c.key === '__ldlq__') {
+                            cell.value = sk.ldlq; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
+                        } else if (c.key === '__lftd__') {
+                            cell.value = sk.lftd; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
                         } else if (c.key === '__faltante__') {
                             var falt = Math.max(0, ped - st);
                             cell.value = falt; cell.numFmt = '#,##0';
