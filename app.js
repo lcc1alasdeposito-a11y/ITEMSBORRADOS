@@ -13951,6 +13951,142 @@ async function exportarExcelDashboard() {
             if (ci > 0) c.numFmt = '#,##0';
         });
 
+        // ── Hoja 2: Por Vendedor ──────────────────────────────────────────
+        var venMap = {};
+        ESTADOS_EXPORT.forEach(function(e, idx) {
+            (results[idx].data || []).forEach(function(item) {
+                var ven = ((item.vendedor_externo || '').trim()) || 'Sin Vendedor';
+                if (!venMap[ven]) venMap[ven] = {};
+                if (!venMap[ven][e.key]) venMap[ven][e.key] = { items: 0, monto: 0 };
+                venMap[ven][e.key].items++;
+                venMap[ven][e.key].monto += Number(item.total_importe) || 0;
+            });
+        });
+        // Ordenar por total importe descendente
+        var venList = Object.keys(venMap).sort(function(a, b) {
+            var tA = ESTADOS_EXPORT.reduce(function(s, e) { return s + ((venMap[a][e.key] || {}).monto || 0); }, 0);
+            var tB = ESTADOS_EXPORT.reduce(function(s, e) { return s + ((venMap[b][e.key] || {}).monto || 0); }, 0);
+            return tB - tA;
+        });
+
+        var wsV = wb.addWorksheet('Por Vendedor');
+        // Columnas: Vendedor | (Items+Importe) x4 estados | Total Items | Total Importe
+        wsV.columns = [
+            { width: 28 },
+            { width: 10 }, { width: 20 }, // Pendientes
+            { width: 10 }, { width: 20 }, // Facturados
+            { width: 10 }, { width: 20 }, // Contabilizados
+            { width: 10 }, { width: 20 }, // No Recuperados
+            { width: 10 }, { width: 20 }, // TOTAL
+        ];
+
+        // Fila 1: Título completo
+        wsV.mergeCells('A1:K1');
+        var vtc = wsV.getCell('A1');
+        vtc.value = 'Resumen por Vendedor — ' + periodoStr;
+        vtc.fill = fill('FF0F172A'); vtc.font = fnt(true, 12, 'FFFFFFFF');
+        vtc.alignment = aln('center', 'middle'); wsV.getRow(1).height = 30;
+
+        // Fila 2: Encabezados de estado (merged por par de columnas)
+        wsV.getRow(2).height = 22;
+        wsV.mergeCells('A2:A3');
+        var vhA = wsV.getCell('A2');
+        vhA.value = 'Vendedor'; vhA.fill = fill('FF334155');
+        vhA.font = fnt(true, 10, 'FFFFFFFF');
+        vhA.alignment = aln('left', 'middle'); vhA.border = brd('FF1E293B');
+
+        var ECOLS = [
+            { label: 'Pendientes',     argb: 'FFB45309', c1: 'B', c2: 'C' },
+            { label: 'Facturados',     argb: 'FF047857', c1: 'D', c2: 'E' },
+            { label: 'Contabilizados', argb: 'FF4338CA', c1: 'F', c2: 'G' },
+            { label: 'No Recuperados', argb: 'FFB91C1C', c1: 'H', c2: 'I' },
+            { label: 'TOTAL',          argb: 'FF1E293B', c1: 'J', c2: 'K' },
+        ];
+        ECOLS.forEach(function(ec) {
+            wsV.mergeCells(ec.c1 + '2:' + ec.c2 + '2');
+            var c = wsV.getCell(ec.c1 + '2');
+            c.value = ec.label; c.fill = fill(ec.argb);
+            c.font = fnt(true, 10, 'FFFFFFFF');
+            c.alignment = aln('center', 'middle'); c.border = brd('FF1E293B');
+        });
+
+        // Fila 3: Sub-encabezados Items / Importe (Gs.)
+        wsV.getRow(3).height = 20;
+        var subCols   = ['B','C','D','E','F','G','H','I','J','K'];
+        var subArgbs  = ['FFB45309','FFB45309','FF047857','FF047857','FF4338CA','FF4338CA','FFB91C1C','FFB91C1C','FF1E293B','FF1E293B'];
+        var subLabels = ['Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)'];
+        subCols.forEach(function(col, ci) {
+            var c = wsV.getCell(col + '3');
+            c.value = subLabels[ci]; c.fill = fill(subArgbs[ci]);
+            c.font = fnt(false, 9, 'FFFFFFFF');
+            c.alignment = aln('center', 'middle'); c.border = brd('FF1E293B');
+        });
+
+        // Acumuladores para fila TOTAL
+        var totByE = {}; var grandItems = 0, grandMonto = 0;
+        ESTADOS_EXPORT.forEach(function(e) { totByE[e.key] = { items: 0, monto: 0 }; });
+
+        // Filas de datos por vendedor
+        venList.forEach(function(ven, vi) {
+            var row = wsV.getRow(vi + 4);
+            row.height = 18;
+            var rf = vi % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
+
+            var cv = row.getCell(1);
+            cv.value = ven; cv.fill = fill(rf);
+            cv.font = fnt(false, 10, 'FF1E293B');
+            cv.alignment = aln('left', 'middle'); cv.border = brd('FFE2E8F0');
+
+            var rowItems = 0, rowMonto = 0;
+            ESTADOS_EXPORT.forEach(function(e, ei) {
+                var d = venMap[ven][e.key] || { items: 0, monto: 0 };
+                rowItems += d.items; rowMonto += d.monto;
+                totByE[e.key].items += d.items; totByE[e.key].monto += d.monto;
+                var cI = row.getCell(2 + ei * 2), cM = row.getCell(3 + ei * 2);
+                cI.value = d.items; cI.numFmt = '#,##0';
+                cM.value = d.monto; cM.numFmt = '#,##0';
+                [cI, cM].forEach(function(c) {
+                    c.fill = fill(rf); c.font = fnt(false, 10, 'FF1E293B');
+                    c.alignment = aln('right', 'middle'); c.border = brd('FFE2E8F0');
+                });
+            });
+            grandItems += rowItems; grandMonto += rowMonto;
+            var cTI = row.getCell(10), cTM = row.getCell(11);
+            cTI.value = rowItems; cTI.numFmt = '#,##0';
+            cTM.value = rowMonto; cTM.numFmt = '#,##0';
+            [cTI, cTM].forEach(function(c) {
+                c.fill = fill(rf); c.font = fnt(true, 10, 'FF1E293B');
+                c.alignment = aln('right', 'middle'); c.border = brd('FFE2E8F0');
+            });
+        });
+
+        // Fila TOTAL final
+        var vTot = wsV.getRow(venList.length + 4);
+        vTot.height = 26;
+        var cvt = vTot.getCell(1);
+        cvt.value = 'TOTAL'; cvt.fill = fill('FF1E293B');
+        cvt.font = fnt(true, 10, 'FFFFFFFF');
+        cvt.alignment = aln('left', 'middle'); cvt.border = brd('FF0F172A');
+        ESTADOS_EXPORT.forEach(function(e, ei) {
+            var cI = vTot.getCell(2 + ei * 2), cM = vTot.getCell(3 + ei * 2);
+            cI.value = totByE[e.key].items; cI.numFmt = '#,##0';
+            cM.value = totByE[e.key].monto; cM.numFmt = '#,##0';
+            [cI, cM].forEach(function(c) {
+                c.fill = fill('FF1E293B'); c.font = fnt(true, 10, 'FFFFFFFF');
+                c.alignment = aln('right', 'middle'); c.border = brd('FF0F172A');
+            });
+        });
+        var cvtI = vTot.getCell(10), cvtM = vTot.getCell(11);
+        cvtI.value = grandItems; cvtI.numFmt = '#,##0';
+        cvtM.value = grandMonto; cvtM.numFmt = '#,##0';
+        [cvtI, cvtM].forEach(function(c) {
+            c.fill = fill('FF1E293B'); c.font = fnt(true, 10, 'FFFFFFFF');
+            c.alignment = aln('right', 'middle'); c.border = brd('FF0F172A');
+        });
+
+        // Freeze las 3 filas de encabezado
+        wsV.views = [{ state: 'frozen', ySplit: 3, topLeftCell: 'A4', activePane: 'bottomLeft' }];
+
         // ── Hojas por estado ──────────────────────────────────────────────
         ESTADOS_EXPORT.forEach(function(e, idx) {
             var items = results[idx].data || [];
