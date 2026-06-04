@@ -13858,8 +13858,8 @@ async function exportarExcelDashboard() {
             { key: 'vendedor_externo', header: 'Vendedor Externo',  type: 'text',   width: 22 },
             { key: 'vendedor_interno', header: 'Vendedor Interno',  type: 'text',   width: 22 },
             { key: 'almacen',          header: 'Almacén',           type: 'text',   width: 14 },
-            { key: 'cant_pedido',      header: 'Cant. Pedido',      type: 'number', width: 14 },
-            { key: 'cant_recibida',    header: 'Cant. Recibida',    type: 'number', width: 14 },
+            { key: 'cantidad_pedido',  header: 'Cant. Pedido',      type: 'number', width: 14 },
+            { key: 'cantidad_recibida', header: 'Cant. Recibida',   type: 'number', width: 14 },
             { key: 'cant_fact',        header: 'Cant. Fact.',       type: 'number', width: 14 },
             { key: 'total_importe',    header: 'Total Importe',     type: 'money',  width: 20 },
             { key: 'motiv_rech',       header: 'Motivo Rechazo',    type: 'text',   width: 24 },
@@ -14173,14 +14173,14 @@ async function exportarExcelDashboard() {
         // Con Stock: pendientes donde stock >= lo pedido (puede cumplirse)
         var conStockItems = pendienteItems.filter(function(item) {
             var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
-            var ped = Number(item.cant_pedido) || 1;
+            var ped = Number(item.cantidad_pedido) || 1;
             return st >= ped;
         });
 
         // Sin Stock: marcados + pendientes con stock insuficiente (0 o menor a lo pedido)
         var pendientesInsuf = pendienteItems.filter(function(item) {
             var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
-            var ped = Number(item.cant_pedido) || 1;
+            var ped = Number(item.cantidad_pedido) || 1;
             return st < ped;
         });
         var sinStockItems = marcadosSinStock.concat(pendientesInsuf);
@@ -14198,8 +14198,8 @@ async function exportarExcelDashboard() {
                 { key: 'denominacion', header: 'Denominación',     type: 'text',   width: 32 },
                 { key: 'nombre',       header: 'Cliente',          type: 'text',   width: 28 },
                 { key: 'solic',        header: 'Solic.',           type: 'text',   width: 14 },
-                { key: 'cant_pedido',  header: 'Cant. Pedido',     type: 'number', width: 14 },
-                { key: '__stock__',     header: 'Stock Total',       type: 'number', width: 14 },
+                { key: 'cantidad_pedido', header: 'Cant. Pedido',    type: 'number', width: 14 },
+                { key: '__stock__',       header: 'Stock Total',     type: 'number', width: 14 },
                 { key: '__almacenes__', header: 'Por Almacén',       type: 'text',   width: 34 },
             ];
             if (cfg.showFaltante) SCOLS.push({ key: '__faltante__', header: 'Faltante', type: 'number', width: 14 });
@@ -14265,7 +14265,7 @@ async function exportarExcelDashboard() {
                     var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
                     var mat = String(item.material || '').trim().toUpperCase();
                     var st  = stockMap[mat] || 0;
-                    var ped = Number(item.cant_pedido) || 0;
+                    var ped = Number(item.cantidad_pedido) || 0;
                     // Altura dinámica según cantidad de almacenes
                     var numAlm = Object.keys(stockByAlmacen[mat] || {}).length || 1;
                     dRow.height = Math.max(18, numAlm * 14 + 4);
