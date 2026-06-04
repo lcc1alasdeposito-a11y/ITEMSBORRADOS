@@ -13842,10 +13842,10 @@ async function exportarExcelDashboard() {
 
         // Cada estado lleva su color de encabezado y su tono claro para filas alternas
         var ESTADOS_EXPORT = [
-            { key: 'pendiente',     label: 'Pendientes',     argb: 'FFB45309', light: 'FFFEF9C3' },
-            { key: 'facturado',     label: 'Facturados',     argb: 'FF047857', light: 'FFD1FAE5' },
-            { key: 'contabilizado', label: 'Contabilizados', argb: 'FF4338CA', light: 'FFE0E7FF' },
-            { key: 'no_recuperado', label: 'No Recuperados', argb: 'FFB91C1C', light: 'FFFEE2E2' },
+            { key: 'pendiente',     label: 'Pendientes',     argb: 'FFFEF3C7', textArgb: 'FF92400E', light: 'FFFEF9C3' },
+            { key: 'facturado',     label: 'Facturados',     argb: 'FFD1FAE5', textArgb: 'FF065F46', light: 'FFD1FAE5' },
+            { key: 'contabilizado', label: 'Contabilizados', argb: 'FFE0E7FF', textArgb: 'FF3730A3', light: 'FFE0E7FF' },
+            { key: 'no_recuperado', label: 'No Recuperados', argb: 'FFFEE2E2', textArgb: 'FF991B1B', light: 'FFFEE2E2' },
         ];
 
         var COLS = [
@@ -13996,30 +13996,31 @@ async function exportarExcelDashboard() {
         vhA.alignment = aln('left', 'middle'); vhA.border = brd('FF1E293B');
 
         var ECOLS = [
-            { label: 'Pendientes',     argb: 'FFB45309', c1: 'B', c2: 'C' },
-            { label: 'Facturados',     argb: 'FF047857', c1: 'D', c2: 'E' },
-            { label: 'Contabilizados', argb: 'FF4338CA', c1: 'F', c2: 'G' },
-            { label: 'No Recuperados', argb: 'FFB91C1C', c1: 'H', c2: 'I' },
-            { label: 'TOTAL',          argb: 'FF1E293B', c1: 'J', c2: 'K' },
+            { label: 'Pendientes',     argb: 'FFFEF3C7', textArgb: 'FF92400E', c1: 'B', c2: 'C' },
+            { label: 'Facturados',     argb: 'FFD1FAE5', textArgb: 'FF065F46', c1: 'D', c2: 'E' },
+            { label: 'Contabilizados', argb: 'FFE0E7FF', textArgb: 'FF3730A3', c1: 'F', c2: 'G' },
+            { label: 'No Recuperados', argb: 'FFFEE2E2', textArgb: 'FF991B1B', c1: 'H', c2: 'I' },
+            { label: 'TOTAL',          argb: 'FFF1F5F9', textArgb: 'FF475569', c1: 'J', c2: 'K' },
         ];
         ECOLS.forEach(function(ec) {
             wsV.mergeCells(ec.c1 + '2:' + ec.c2 + '2');
             var c = wsV.getCell(ec.c1 + '2');
             c.value = ec.label; c.fill = fill(ec.argb);
-            c.font = fnt(true, 10, 'FFFFFFFF');
-            c.alignment = aln('center', 'middle'); c.border = brd('FF1E293B');
+            c.font = fnt(true, 10, ec.textArgb);
+            c.alignment = aln('center', 'middle'); c.border = brd('FFE2E8F0');
         });
 
         // Fila 3: Sub-encabezados Items / Importe (Gs.)
         wsV.getRow(3).height = 20;
         var subCols   = ['B','C','D','E','F','G','H','I','J','K'];
-        var subArgbs  = ['FFB45309','FFB45309','FF047857','FF047857','FF4338CA','FF4338CA','FFB91C1C','FFB91C1C','FF1E293B','FF1E293B'];
+        var subArgbs  = ['FFFEF3C7','FFFEF3C7','FFD1FAE5','FFD1FAE5','FFE0E7FF','FFE0E7FF','FFFEE2E2','FFFEE2E2','FFF1F5F9','FFF1F5F9'];
+        var subTexts  = ['FF92400E','FF92400E','FF065F46','FF065F46','FF3730A3','FF3730A3','FF991B1B','FF991B1B','FF475569','FF475569'];
         var subLabels = ['Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)','Items','Importe (Gs.)'];
         subCols.forEach(function(col, ci) {
             var c = wsV.getCell(col + '3');
             c.value = subLabels[ci]; c.fill = fill(subArgbs[ci]);
-            c.font = fnt(false, 9, 'FFFFFFFF');
-            c.alignment = aln('center', 'middle'); c.border = brd('FF1E293B');
+            c.font = fnt(false, 9, subTexts[ci]);
+            c.alignment = aln('center', 'middle'); c.border = brd('FFE2E8F0');
         });
 
         // Acumuladores para fila TOTAL
@@ -14100,16 +14101,16 @@ async function exportarExcelDashboard() {
                 var cell = hdr.getCell(ci + 1);
                 cell.value = c.header;
                 cell.fill = fill(e.argb);
-                cell.font = fnt(true, 10, 'FFFFFFFF');
+                cell.font = fnt(true, 10, e.textArgb || 'FF1E293B');
                 cell.alignment = aln(c.type === 'money' || c.type === 'number' ? 'right' : 'left', 'middle');
-                cell.border = brd(e.argb);
+                cell.border = brd('FFE2E8F0');
             });
 
             // Filas de datos con colores alternados blanco / tono suave del estado
             items.forEach(function(item, ri) {
                 var row = ws.getRow(ri + 2);
                 row.height = 18;
-                var rowFill = ri % 2 === 0 ? 'FFFFFFFF' : e.light;
+                var rowFill = ri % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
                 COLS.forEach(function(c, ci) {
                     var cell = row.getCell(ci + 1);
                     var v = item[c.key];
@@ -14154,25 +14155,36 @@ async function exportarExcelDashboard() {
             db_getItems({ estado: 'pendiente', limit: 0, fecha_desde: desde, fecha_hasta: hasta }),
             sup.from('stock').select('material, cantidad'),
         ]);
-        var sinStockItems  = stkFetch[0].data || [];
-        var pendienteItems = stkFetch[1].data || [];
+        var marcadosSinStock = stkFetch[0].data || [];
+        var pendienteItems   = stkFetch[1].data || [];
 
-        // Mapa material → cantidad total (suma todos los almacenes)
+        // Mapa material → stock total (suma todos los almacenes)
         var stockMap = {};
         (stkFetch[2].data || []).forEach(function(s) {
             var mat = String(s.material || '').trim().toUpperCase();
             if (mat) stockMap[mat] = (stockMap[mat] || 0) + (Number(s.cantidad) || 0);
         });
 
-        // Con Stock: pendientes cuyo material tiene stock > 0
+        // Con Stock: pendientes donde stock >= lo pedido (puede cumplirse)
         var conStockItems = pendienteItems.filter(function(item) {
-            return (stockMap[String(item.material || '').trim().toUpperCase()] || 0) > 0;
+            var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
+            var ped = Number(item.cant_pedido) || 1;
+            return st >= ped;
         });
 
-        [
-            { name: 'Sin Stock', items: sinStockItems, argb: 'FFB91C1C', showStock: false },
-            { name: 'Con Stock', items: conStockItems, argb: 'FF047857', showStock: true  },
-        ].forEach(function(cfg) {
+        // Sin Stock: marcados + pendientes con stock insuficiente (0 o menor a lo pedido)
+        var pendientesInsuf = pendienteItems.filter(function(item) {
+            var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
+            var ped = Number(item.cant_pedido) || 1;
+            return st < ped;
+        });
+        var sinStockItems = marcadosSinStock.concat(pendientesInsuf);
+
+        var CFG_SHEETS = [
+            { name: 'Sin Stock', items: sinStockItems, hdrBg: 'FFFEE2E2', hdrText: 'FF991B1B', showFaltante: true  },
+            { name: 'Con Stock', items: conStockItems, hdrBg: 'FFD1FAE5', hdrText: 'FF065F46', showFaltante: false },
+        ];
+        CFG_SHEETS.forEach(function(cfg) {
 
             var SCOLS = [
                 { key: 'fecha_carga',  header: 'Fecha Carga',     type: 'date',   width: 14 },
@@ -14182,8 +14194,9 @@ async function exportarExcelDashboard() {
                 { key: 'nombre',       header: 'Cliente',          type: 'text',   width: 28 },
                 { key: 'solic',        header: 'Solic.',           type: 'text',   width: 14 },
                 { key: 'cant_pedido',  header: 'Cant. Pedido',     type: 'number', width: 14 },
+                { key: '__stock__',    header: 'Stock Disponible', type: 'number', width: 16 },
             ];
-            if (cfg.showStock) SCOLS.push({ key: '__stock__', header: 'Stock Disponible', type: 'number', width: 18 });
+            if (cfg.showFaltante) SCOLS.push({ key: '__faltante__', header: 'Faltante', type: 'number', width: 14 });
             SCOLS.push({ key: 'total_importe', header: 'Total Importe', type: 'money', width: 20 });
 
             var NC = SCOLS.length;
@@ -14192,21 +14205,21 @@ async function exportarExcelDashboard() {
             ws.columns = SCOLS.map(function(c) { return { width: c.width }; });
             var ri = 1;
 
-            // Fila 1: Título
+            // Fila 1: Título (slate oscuro, minimalista)
             ws.mergeCells('A1:' + lastColLtr + '1');
             var tcell = ws.getCell('A1');
             tcell.value = cfg.name + ' — ' + periodoStr;
-            tcell.fill = fill('FF0F172A'); tcell.font = fnt(true, 12, 'FFFFFFFF');
-            tcell.alignment = aln('center', 'middle'); ws.getRow(1).height = 30;
+            tcell.fill = fill('FF1E293B'); tcell.font = fnt(true, 12, 'FFFFFFFF');
+            tcell.alignment = aln('center', 'middle'); ws.getRow(1).height = 28;
 
-            // Fila 2: Encabezados de columna
-            var hRow = ws.getRow(2); hRow.height = 22;
+            // Fila 2: Encabezados de columna (suaves)
+            var hRow = ws.getRow(2); hRow.height = 20;
             SCOLS.forEach(function(c, ci) {
                 var cell = hRow.getCell(ci + 1);
                 cell.value = c.header;
-                cell.fill = fill('FF334155'); cell.font = fnt(true, 10, 'FFFFFFFF');
+                cell.fill = fill('FFF1F5F9'); cell.font = fnt(true, 10, 'FF475569');
                 cell.alignment = aln(c.type === 'money' || c.type === 'number' ? 'right' : 'left', 'middle');
-                cell.border = brd('FF1E293B');
+                cell.border = brd('FFE2E8F0');
             });
             ri = 3;
 
@@ -14233,22 +14246,30 @@ async function exportarExcelDashboard() {
                 var vMonto = vitems.reduce(function(s, i) { return s + (Number(i.total_importe) || 0); }, 0);
                 gItems += vitems.length; gMonto += vMonto;
 
-                // Fila header vendedor (color del estado, merged)
+                // Header vendedor: fondo suave, texto en color del estado
                 ws.mergeCells(ri, 1, ri, NC);
                 var vh = ws.getCell(ri, 1);
                 vh.value = ven + '   ·   ' + vitems.length + ' items   ·   Gs. ' + vMonto.toLocaleString('es-PY');
-                vh.fill = fill(cfg.argb); vh.font = fnt(true, 10, 'FFFFFFFF');
-                vh.alignment = aln('left', 'middle'); ws.getRow(ri).height = 22; ri++;
+                vh.fill = fill(cfg.hdrBg); vh.font = fnt(true, 10, cfg.hdrText);
+                vh.alignment = aln('left', 'middle'); ws.getRow(ri).height = 20; ri++;
 
-                // Filas de items del vendedor
+                // Filas de items
                 vitems.forEach(function(item, idx) {
                     var dRow = ws.getRow(ri); dRow.height = 18;
                     var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
+                    var mat = String(item.material || '').trim().toUpperCase();
+                    var st  = stockMap[mat] || 0;
+                    var ped = Number(item.cant_pedido) || 0;
                     SCOLS.forEach(function(c, ci) {
                         var cell = dRow.getCell(ci + 1);
                         if (c.key === '__stock__') {
-                            cell.value = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
-                            cell.numFmt = '#,##0'; cell.alignment = aln('right', 'middle');
+                            cell.value = st; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
+                        } else if (c.key === '__faltante__') {
+                            var falt = Math.max(0, ped - st);
+                            cell.value = falt; cell.numFmt = '#,##0';
+                            cell.alignment = aln('right', 'middle');
+                            if (falt > 0) { cell.font = fnt(false, 10, 'FF991B1B'); }
                         } else if (c.type === 'date') {
                             if (item[c.key]) {
                                 var d = new Date(item[c.key]);
@@ -14263,14 +14284,15 @@ async function exportarExcelDashboard() {
                             cell.value = item[c.key] != null ? String(item[c.key]) : '';
                             cell.alignment = aln('left', 'middle');
                         }
-                        cell.fill = fill(rf); cell.font = fnt(false, 10, 'FF1E293B');
+                        cell.fill = fill(rf);
+                        if (!cell.font) cell.font = fnt(false, 10, 'FF1E293B');
                         cell.border = brd('FFE2E8F0');
                     });
                     ri++;
                 });
 
-                // Separador visual entre grupos de vendedores
-                ws.getRow(ri).height = 5; ri++;
+                // Separador entre vendedores
+                ws.getRow(ri).height = 4; ri++;
             });
 
             // Sin datos para el período
@@ -14282,16 +14304,16 @@ async function exportarExcelDashboard() {
                 ws.getRow(ri).height = 40; ri++;
             }
 
-            // Fila total general
+            // Total general (slate medio, suave)
             ws.mergeCells(ri, 1, ri, NC - 1);
             var totCell = ws.getCell(ri, 1);
             totCell.value = 'TOTAL GENERAL — ' + gItems + ' items';
-            totCell.fill = fill('FF1E293B'); totCell.font = fnt(true, 10, 'FFFFFFFF');
-            totCell.alignment = aln('left', 'middle'); totCell.border = brd('FF0F172A');
-            ws.getRow(ri).height = 26;
+            totCell.fill = fill('FF475569'); totCell.font = fnt(true, 10, 'FFFFFFFF');
+            totCell.alignment = aln('left', 'middle'); totCell.border = brd('FF334155');
+            ws.getRow(ri).height = 24;
             var totMonto = ws.getCell(ri, NC);
             totMonto.value = gMonto; totMonto.numFmt = '#,##0';
-            totMonto.fill = fill('FF1E293B'); totMonto.font = fnt(true, 10, 'FFFFFFFF');
+            totMonto.fill = fill('FF475569'); totMonto.font = fnt(true, 10, 'FFFFFFFF');
             totMonto.alignment = aln('right', 'middle'); totMonto.border = brd('FF0F172A');
         });
 
