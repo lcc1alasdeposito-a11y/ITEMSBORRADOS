@@ -98,6 +98,31 @@
   transform: scale(1.05);
 }
 
+/* --- pulse-pending: reemplaza box-shadow animado (repaint/frame) por
+       ::after composited (solo transform+opacity, cero paint) --- */
+.items-row.pendiente .status-badge {
+  animation: none !important;
+  box-shadow: none !important;
+  position: relative;
+  overflow: visible;
+}
+.items-row.pendiente .status-badge::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.35);
+  transform: scale(1);
+  opacity: 1;
+  animation: pulse-pending-ring 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pulse-pending-ring {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  70%  { transform: scale(1.6); opacity: 0;    }
+  100% { transform: scale(1.6); opacity: 0;    }
+}
+
 /* --- ANIMACIONES Y TRANSICIONES PRO --- */
 
 /* 1. Modales fluidos (Spring Physics y Blur) */
@@ -109,10 +134,10 @@
   background: rgba(11, 17, 32, 0.65);
 }
 .modal-container, .modal-box {
-  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  transform: translateY(40px) scale(0.95) !important;
+  transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), transform 0.45s cubic-bezier(0.34, 1.15, 0.64, 1) !important;
+  transform: translateY(24px) scale(0.95);
 }
-.modal-overlay.is-open .modal-container, 
+.modal-overlay.is-open .modal-container,
 .modal-overlay.is-open .modal-box {
   transform: translateY(0) scale(1) !important;
 }
@@ -145,7 +170,7 @@
 }
 @media (min-width: 769px) {
   .tab:hover {
-    transform: translateX(6px) !important;
+    transform: translateX(3px) !important;
   }
 }
 .tab:active {
