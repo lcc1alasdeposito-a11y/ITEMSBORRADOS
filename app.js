@@ -13825,10 +13825,11 @@ async function exportarExcelDashboard() {
     var btn = document.getElementById('btnExportarExcel');
     if (btn) { btn.disabled = true; btn.innerHTML = SVG_DOWN + ' Generando...'; }
     try {
-        if (typeof XLSX === 'undefined') {
+        // ExcelJS soporta colores/estilos (SheetJS CE no lo hace)
+        if (typeof ExcelJS === 'undefined') {
             await new Promise(function(resolve, reject) {
                 var s = document.createElement('script');
-                s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+                s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
                 s.onload = resolve;
                 s.onerror = function() { reject(new Error('No se pudo cargar la librería. Verificá tu conexión.')); };
                 document.head.appendChild(s);
@@ -13839,142 +13840,182 @@ async function exportarExcelDashboard() {
         var desde = dashState.desde ? dashState.desde + 'T00:00:00' : '';
         var hasta  = dashState.hasta  ? dashState.hasta  + 'T23:59:59' : '';
 
+        // Cada estado lleva su color de encabezado y su tono claro para filas alternas
         var ESTADOS_EXPORT = [
-            { key: 'pendiente',     label: 'Pendientes'     },
-            { key: 'facturado',     label: 'Facturados'     },
-            { key: 'contabilizado', label: 'Contabilizados' },
-            { key: 'no_recuperado', label: 'No Recuperados' },
+            { key: 'pendiente',     label: 'Pendientes',     argb: 'FFB45309', light: 'FFFEF9C3' },
+            { key: 'facturado',     label: 'Facturados',     argb: 'FF047857', light: 'FFD1FAE5' },
+            { key: 'contabilizado', label: 'Contabilizados', argb: 'FF4338CA', light: 'FFE0E7FF' },
+            { key: 'no_recuperado', label: 'No Recuperados', argb: 'FFB91C1C', light: 'FFFEE2E2' },
         ];
 
-        // type: 'date' → serial Excel + formato dd/mm/yyyy
-        // type: 'money' → número entero con separador de miles
-        // type: 'number' → número entero
         var COLS = [
-            { key: 'fecha_carga',      header: 'Fecha Carga',      type: 'date'   },
-            { key: 'doc_vtas',         header: 'Doc. Ventas',       type: 'text'   },
-            { key: 'material',         header: 'Material',          type: 'text'   },
-            { key: 'denominacion',     header: 'Denominación',      type: 'text'   },
-            { key: 'nombre',           header: 'Cliente',           type: 'text'   },
-            { key: 'solic',            header: 'Solic.',            type: 'text'   },
-            { key: 'vendedor_externo', header: 'Vendedor Externo',  type: 'text'   },
-            { key: 'vendedor_interno', header: 'Vendedor Interno',  type: 'text'   },
-            { key: 'almacen',          header: 'Almacén',           type: 'text'   },
-            { key: 'cant_pedido',      header: 'Cant. Pedido',      type: 'number' },
-            { key: 'cant_recibida',    header: 'Cant. Recibida',    type: 'number' },
-            { key: 'cant_fact',        header: 'Cant. Fact.',       type: 'number' },
-            { key: 'total_importe',    header: 'Total Importe',     type: 'money'  },
-            { key: 'motiv_rech',       header: 'Motivo Rechazo',    type: 'text'   },
-            { key: 'estado',           header: 'Estado',            type: 'text'   },
+            { key: 'fecha_carga',      header: 'Fecha Carga',      type: 'date',   width: 14 },
+            { key: 'doc_vtas',         header: 'Doc. Ventas',       type: 'text',   width: 16 },
+            { key: 'material',         header: 'Material',          type: 'text',   width: 16 },
+            { key: 'denominacion',     header: 'Denominación',      type: 'text',   width: 32 },
+            { key: 'nombre',           header: 'Cliente',           type: 'text',   width: 30 },
+            { key: 'solic',            header: 'Solic.',            type: 'text',   width: 14 },
+            { key: 'vendedor_externo', header: 'Vendedor Externo',  type: 'text',   width: 22 },
+            { key: 'vendedor_interno', header: 'Vendedor Interno',  type: 'text',   width: 22 },
+            { key: 'almacen',          header: 'Almacén',           type: 'text',   width: 14 },
+            { key: 'cant_pedido',      header: 'Cant. Pedido',      type: 'number', width: 14 },
+            { key: 'cant_recibida',    header: 'Cant. Recibida',    type: 'number', width: 14 },
+            { key: 'cant_fact',        header: 'Cant. Fact.',       type: 'number', width: 14 },
+            { key: 'total_importe',    header: 'Total Importe',     type: 'money',  width: 20 },
+            { key: 'motiv_rech',       header: 'Motivo Rechazo',    type: 'text',   width: 24 },
+            { key: 'estado',           header: 'Estado',            type: 'text',   width: 18 },
         ];
 
-        // Convierte ISO string a número serial de Excel (días desde 1/1/1900)
-        // Usa fecha UTC para evitar desfases de timezone
-        function toExcelSerial(isoStr) {
-            if (!isoStr) return null;
-            var d = new Date(isoStr);
-            if (isNaN(d.getTime())) return null;
-            var utc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-            return (utc - Date.UTC(1899, 11, 30)) / 86400000;
-        }
+        // Helpers de estilo ExcelJS
+        function fill(argb)    { return { type: 'pattern', pattern: 'solid', fgColor: { argb: argb } }; }
+        function fnt(bold, sz, argb) { return { bold: !!bold, size: sz || 10, color: { argb: argb || 'FF1E293B' }, name: 'Calibri' }; }
+        function aln(h, v)     { return { horizontal: h || 'left', vertical: v || 'middle', wrapText: false }; }
+        function brd(argb)     { var s = { style: 'thin', color: { argb: argb || 'FFE2E8F0' } }; return { top: s, bottom: s, left: s, right: s }; }
 
         var results = await Promise.all(ESTADOS_EXPORT.map(function(e) {
             return db_getItems({ estado: e.key, limit: 0, fecha_desde: desde, fecha_hasta: hasta });
         }));
 
-        var wb = XLSX.utils.book_new();
+        var wb  = new ExcelJS.Workbook();
+        wb.creator  = 'ALAS Logística';
+        wb.created  = new Date();
         var now = new Date();
 
-        // ── Hoja 1: Resumen ───────────────────────────────────────────────
         var periodoStr = dashState.desde && dashState.hasta
             ? dashState.desde.split('-').reverse().join('/') + ' — ' + dashState.hasta.split('-').reverse().join('/')
             : 'Todos los períodos';
-        var nowStr = now.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        var nowStr = now.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-        var resumenAoa = [
-            ['Reporte de Pedidos Recuperados — ALAS Logística'],
-            ['Período:', periodoStr],
-            ['Generado:', nowStr],
-            [],
-            ['Estado', 'Cantidad de Items', 'Total Importe (Gs.)'],
-        ];
-        var totalItems = 0, totalMonto = 0;
+        // ── Hoja 1: Resumen ───────────────────────────────────────────────
+        var wsR = wb.addWorksheet('Resumen');
+        wsR.columns = [{ width: 26 }, { width: 20 }, { width: 26 }];
+
+        // Título
+        wsR.mergeCells('A1:C1');
+        var tc = wsR.getCell('A1');
+        tc.value = 'ALAS Logística — Reporte de Pedidos Recuperados';
+        tc.fill = fill('FF0F172A');
+        tc.font = fnt(true, 13, 'FFFFFFFF');
+        tc.alignment = aln('center', 'middle');
+        wsR.getRow(1).height = 34;
+
+        // Período y Generado
+        [['Período:', periodoStr], ['Generado:', nowStr]].forEach(function(pair, i) {
+            var r = i + 2;
+            wsR.getRow(r).height = 20;
+            wsR.getCell('A' + r).value = pair[0];
+            wsR.getCell('A' + r).font  = fnt(true, 10, 'FF475569');
+            wsR.mergeCells('B' + r + ':C' + r);
+            wsR.getCell('B' + r).value = pair[1];
+            wsR.getCell('B' + r).font  = fnt(false, 10, 'FF1E293B');
+        });
+
+        wsR.getRow(4).height = 6;
+
+        // Encabezados tabla resumen
+        wsR.getRow(5).height = 24;
+        ['Estado', 'Cantidad de Items', 'Total Importe (Gs.)'].forEach(function(h, ci) {
+            var c = wsR.getRow(5).getCell(ci + 1);
+            c.value = h; c.fill = fill('FF334155');
+            c.font = fnt(true, 10, 'FFFFFFFF');
+            c.alignment = aln(ci > 0 ? 'right' : 'left', 'middle');
+            c.border = brd('FF1E293B');
+        });
+
+        // Filas de estado
+        var totItems = 0, totMonto = 0;
         ESTADOS_EXPORT.forEach(function(e, idx) {
             var items = results[idx].data || [];
-            var monto = items.reduce(function(acc, r) { return acc + (Number(r.total_importe) || 0); }, 0);
-            totalItems += items.length;
-            totalMonto += monto;
-            resumenAoa.push([e.label, items.length, monto]);
+            var monto = items.reduce(function(a, r) { return a + (Number(r.total_importe) || 0); }, 0);
+            totItems += items.length; totMonto += monto;
+            var row = wsR.getRow(6 + idx);
+            row.height = 22;
+            [e.label, items.length, monto].forEach(function(val, ci) {
+                var c = row.getCell(ci + 1);
+                c.value = val; c.fill = fill(e.light);
+                c.font = fnt(false, 10, 'FF1E293B');
+                c.alignment = aln(ci > 0 ? 'right' : 'left', 'middle');
+                c.border = brd('FFE2E8F0');
+                if (ci > 0) c.numFmt = '#,##0';
+            });
         });
-        resumenAoa.push(['TOTAL', totalItems, totalMonto]);
 
-        var wsResumen = XLSX.utils.aoa_to_sheet(resumenAoa);
-        // Formato miles en columna C (filas 6 a 10 = índices 5 a 9)
-        for (var ri = 5; ri <= 9; ri++) {
-            var addr = XLSX.utils.encode_cell({ r: ri, c: 2 });
-            if (wsResumen[addr] && wsResumen[addr].t === 'n') wsResumen[addr].z = '#,##0';
-        }
-        wsResumen['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 26 }];
-        XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+        // Fila TOTAL
+        wsR.getRow(10).height = 26;
+        ['TOTAL', totItems, totMonto].forEach(function(val, ci) {
+            var c = wsR.getRow(10).getCell(ci + 1);
+            c.value = val; c.fill = fill('FF1E293B');
+            c.font = fnt(true, 10, 'FFFFFFFF');
+            c.alignment = aln(ci > 0 ? 'right' : 'left', 'middle');
+            c.border = brd('FF0F172A');
+            if (ci > 0) c.numFmt = '#,##0';
+        });
 
         // ── Hojas por estado ──────────────────────────────────────────────
-        var headers = COLS.map(function(c) { return c.header; });
-
         ESTADOS_EXPORT.forEach(function(e, idx) {
             var items = results[idx].data || [];
+            var ws = wb.addWorksheet(e.label);
+            ws.columns = COLS.map(function(c) { return { width: c.width }; });
 
-            // Construir AoA con tipos correctos desde el origen
-            var aoa = [headers];
-            items.forEach(function(item) {
-                var row = COLS.map(function(c) {
+            // Encabezado coloreado
+            var hdr = ws.getRow(1);
+            hdr.height = 26;
+            COLS.forEach(function(c, ci) {
+                var cell = hdr.getCell(ci + 1);
+                cell.value = c.header;
+                cell.fill = fill(e.argb);
+                cell.font = fnt(true, 10, 'FFFFFFFF');
+                cell.alignment = aln(c.type === 'money' || c.type === 'number' ? 'right' : 'left', 'middle');
+                cell.border = brd(e.argb);
+            });
+
+            // Filas de datos con colores alternados blanco / tono suave del estado
+            items.forEach(function(item, ri) {
+                var row = ws.getRow(ri + 2);
+                row.height = 18;
+                var rowFill = ri % 2 === 0 ? 'FFFFFFFF' : e.light;
+                COLS.forEach(function(c, ci) {
+                    var cell = row.getCell(ci + 1);
                     var v = item[c.key];
                     if (c.type === 'date') {
-                        return toExcelSerial(v); // número → Excel lo trata como fecha
-                    }
-                    if (c.type === 'money' || c.type === 'number') {
+                        if (v) {
+                            var d = new Date(v);
+                            cell.value = isNaN(d.getTime()) ? (v || '') : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+                            cell.numFmt = 'dd/mm/yyyy';
+                        }
+                    } else if (c.type === 'money' || c.type === 'number') {
                         var n = Number(v);
-                        return isNaN(n) ? '' : n;
+                        cell.value = isNaN(n) ? '' : n;
+                        cell.numFmt = '#,##0';
+                        cell.alignment = aln('right', 'middle');
+                    } else {
+                        cell.value = v != null ? String(v) : '';
                     }
-                    return v != null ? String(v) : '';
+                    cell.fill = fill(rowFill);
+                    cell.font = fnt(false, 10, 'FF1E293B');
+                    cell.border = brd('FFE2E8F0');
+                    if (!cell.alignment) cell.alignment = aln('left', 'middle');
                 });
-                aoa.push(row);
             });
 
-            var ws = XLSX.utils.aoa_to_sheet(aoa);
-
-            // Aplicar formatos de display a las celdas numéricas
-            var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-            COLS.forEach(function(col, ci) {
-                if (col.type === 'text') return;
-                var fmt = col.type === 'date' ? 'dd/mm/yyyy' : '#,##0';
-                for (var r = 1; r <= range.e.r; r++) {
-                    var cell = ws[XLSX.utils.encode_cell({ r: r, c: ci })];
-                    if (cell && cell.t === 'n') cell.z = fmt;
-                }
-            });
-
-            // Fila de encabezado congelada
-            ws['!sheetViews'] = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
-
-            // Autofiltro sobre todo el rango
-            ws['!autofilter'] = { ref: ws['!ref'] };
-
-            // Anchos de columna por tipo de dato
-            ws['!cols'] = COLS.map(function(c) {
-                if (c.type === 'date')                                        return { wch: 14 };
-                if (c.type === 'money')                                       return { wch: 20 };
-                if (c.type === 'number')                                      return { wch: 14 };
-                if (c.key === 'denominacion' || c.key === 'nombre')           return { wch: 32 };
-                if (c.key === 'vendedor_externo' || c.key === 'vendedor_interno') return { wch: 22 };
-                return { wch: 18 };
-            });
-
-            XLSX.utils.book_append_sheet(wb, ws, e.label);
+            // Freeze + autofilter
+            ws.views = [{ state: 'frozen', ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }];
+            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: COLS.length } };
         });
 
+        // ── Descargar ─────────────────────────────────────────────────────
+        var buffer = await wb.xlsx.writeBuffer();
+        var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        var url  = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
         var fileDateLabel = dashState.desde && dashState.hasta
             ? dashState.desde + '_' + dashState.hasta
             : now.toISOString().slice(0, 10);
-        XLSX.writeFile(wb, 'pedidos_recuperados_' + fileDateLabel + '.xlsx');
+        a.download = 'pedidos_recuperados_' + fileDateLabel + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
 
     } catch (err) {
         alert('Error al exportar: ' + (err.message || 'Error desconocido'));
