@@ -3304,6 +3304,33 @@
   overflow: visible;
 }
 
+.dash-export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  font-family: inherit;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+}
+.dash-export-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.18);
+}
+.dash-export-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .dash-date-btn-inline {
   min-height: 38px;
   padding: 9px 18px;
