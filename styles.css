@@ -3529,13 +3529,7 @@
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
 }
-.kpi-card:hover {
-  transform: translateY(-6px) !important;
-  box-shadow: 0 20px 40px rgba(91, 116, 158, 0.18),
-              0 0 0 1px rgba(91, 116, 158, 0.1) !important;
-}
 .kpi-card:active {
-  transform: translateY(-1px) !important;
   transition-duration: 0.08s !important;
 }
 
