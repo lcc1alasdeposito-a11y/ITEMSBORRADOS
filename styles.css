@@ -3521,11 +3521,10 @@
 .dash-kpis .kpi-card:nth-child(6),
 .dash-kpis-top .kpi-card:nth-child(6) { animation-delay: 340ms; }
 
-/* Hover KPI cards — solo translateY, sin scale (evita blur de subpíxel) */
 .kpi-card {
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.28s ease,
-              border-color 0.2s ease !important;
+  transition: box-shadow 0.22s ease,
+              border-color 0.22s ease,
+              background-color 0.22s ease !important;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -4116,6 +4115,11 @@
   background: #fff;
   border: 1px solid var(--kpi-shell) !important;
   box-shadow: 0 8px 24px rgba(15, 23, 42, .065), inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+.kpi-state-recuperado_total.kpi-flow-card:hover {
+  box-shadow: 0 0 0 1.5px rgba(11,95,141,.18), 0 6px 20px rgba(11,95,141,.07) !important;
+  border-color: rgba(11,95,141,.22) !important;
+  background-color: rgba(11,95,141,.018) !important;
 }
 
 .kpi-state-recuperado_total .kpi-val {
