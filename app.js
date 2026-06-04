@@ -14158,30 +14158,35 @@ async function exportarExcelDashboard() {
         var marcadosSinStock = stkFetch[0].data || [];
         var pendienteItems   = stkFetch[1].data || [];
 
-        // Mapa material → stock total y desglose por almacén
+        // Mapa igual al que usa el app web: material exacto → { LDAL, LDFA, LDLQ, LFTD }
         var stockMap = {};
-        var stockByAlmacen = {};
         (stkFetch[2].data || []).forEach(function(s) {
-            var mat = String(s.material || '').trim().toUpperCase();
-            if (!mat) return;
-            stockMap[mat] = (stockMap[mat] || 0) + (Number(s.cantidad) || 0);
-            var alm = String(s.almacen || '').trim() || 'Sin almacén';
-            if (!stockByAlmacen[mat]) stockByAlmacen[mat] = {};
-            stockByAlmacen[mat][alm] = (stockByAlmacen[mat][alm] || 0) + (Number(s.cantidad) || 0);
+            if (!s.material) return;
+            if (!stockMap[s.material]) stockMap[s.material] = {};
+            stockMap[s.material][s.almacen] = Number(s.cantidad) || 0;
         });
+
+        // Enriquece un item con stock igual que renderItemsView:
+        // prioriza stock table, hace fallback a valores guardados en el item
+        function enrichStock(item) {
+            var ms   = stockMap[item.material] || {};
+            var ldal = ms['LDAL'] != null ? ms['LDAL'] : (Number(item.stock_ldal) || 0);
+            var ldfa = ms['LDFA'] != null ? ms['LDFA'] : (Number(item.stock_ldfa) || 0);
+            var ldlq = ms['LDLQ'] != null ? ms['LDLQ'] : (Number(item.stock_ldlq) || 0);
+            var lftd = ms['LFTD'] != null ? ms['LFTD'] : (Number(item.stock_lftd) || 0);
+            return { ldal: ldal, ldfa: ldfa, ldlq: ldlq, lftd: lftd, total: ldal + ldfa + ldlq + lftd };
+        }
 
         // Con Stock: pendientes donde stock >= lo pedido (puede cumplirse)
         var conStockItems = pendienteItems.filter(function(item) {
-            var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
-            var ped = Number(item.cantidad_pedido) || 1;
-            return st >= ped;
+            var ped = Number(item.cantidad_pedido) || 0;
+            return ped > 0 && enrichStock(item).total >= ped;
         });
 
-        // Sin Stock: marcados + pendientes con stock insuficiente (0 o menor a lo pedido)
+        // Sin Stock: marcados + pendientes con stock insuficiente (mismo criterio que la web)
         var pendientesInsuf = pendienteItems.filter(function(item) {
-            var st  = stockMap[String(item.material || '').trim().toUpperCase()] || 0;
-            var ped = Number(item.cantidad_pedido) || 1;
-            return st < ped;
+            var ped = Number(item.cantidad_pedido) || 0;
+            return enrichStock(item).total < ped;
         });
         var sinStockItems = marcadosSinStock.concat(pendientesInsuf);
 
@@ -14263,12 +14268,10 @@ async function exportarExcelDashboard() {
                 vitems.forEach(function(item, idx) {
                     var dRow = ws.getRow(ri); dRow.height = 18;
                     var rf = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
-                    var mat = String(item.material || '').trim().toUpperCase();
-                    var st  = stockMap[mat] || 0;
+                    var sk  = enrichStock(item);       // misma lógica que renderItemsView
+                    var st  = sk.total;
                     var ped = Number(item.cantidad_pedido) || 0;
-                    // Altura dinámica según cantidad de almacenes
-                    var numAlm = Object.keys(stockByAlmacen[mat] || {}).length || 1;
-                    dRow.height = Math.max(18, numAlm * 14 + 4);
+                    dRow.height = 60;                  // 4 almacenes × ~14px + padding
 
                     SCOLS.forEach(function(c, ci) {
                         var cell = dRow.getCell(ci + 1);
@@ -14276,11 +14279,13 @@ async function exportarExcelDashboard() {
                             cell.value = st; cell.numFmt = '#,##0';
                             cell.alignment = aln('right', 'top');
                         } else if (c.key === '__almacenes__') {
-                            var almInfo = stockByAlmacen[mat] || {};
-                            var almLines = Object.keys(almInfo).sort().map(function(alm) {
-                                return alm + ': ' + (almInfo[alm] || 0);
-                            }).join('\n');
-                            cell.value = almLines || '—';
+                            var almLines = [
+                                'LDAL: ' + sk.ldal,
+                                'LDFA: ' + sk.ldfa,
+                                'LDLQ: ' + sk.ldlq,
+                                'LFTD: ' + sk.lftd,
+                            ].join('\n');
+                            cell.value = almLines;
                             cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
                         } else if (c.key === '__faltante__') {
                             var falt = Math.max(0, ped - st);
