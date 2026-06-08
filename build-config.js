@@ -17,3 +17,4 @@ window.ALAS_SSO_CONFIG = {
 
 fs.writeFileSync(path.join(__dirname, 'alas-sso-config.js'), content, 'utf8');
 console.log('[build] alas-sso-config.js generado. launcherUrl:', launcherUrl);
+
