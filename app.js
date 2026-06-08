@@ -10173,22 +10173,32 @@ function enhanceSelect(l) {
     }
 }
 
+var _lastImportTs = parseInt(localStorage.getItem("lastImportTime") || "0") || 0;
+var _TOP_TIME_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+
+function _fmtTime(ts) {
+    var d = new Date(ts), now = new Date();
+    var hh = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+    var dd = ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2);
+    var sameDay = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    var prev = new Date(now); prev.setDate(prev.getDate() - 1);
+    var sameYest = d.getDate() === prev.getDate() && d.getMonth() === prev.getMonth() && d.getFullYear() === prev.getFullYear();
+    return (sameDay ? "Hoy" : sameYest ? "Ayer" : dd) + " " + hh;
+}
+
+function setLastImportTime(ts) {
+    _lastImportTs = ts;
+    try { localStorage.setItem("lastImportTime", String(ts)); } catch(e) {}
+    updateTopTime();
+}
+
 function updateTopTime() {
-    var l = document.getElementById("topUpdate"), t = localStorage.getItem("lastImportTime");
+    var l = document.getElementById("topUpdate");
     if (!l) return;
+    var ts = _lastImportTs || parseInt(localStorage.getItem("lastImportTime") || "0") || 0;
     l.style.display = "inline-flex";
-    if (!t) { l.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Última actualización —'; return }
-    try {
-        var d = new Date(parseInt(t)),
-            now = new Date(),
-            hh = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: !1 }),
-            dd = d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" }),
-            sameDay = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(),
-            yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
-        var sameYesterday = d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear(),
-            prefix = sameDay ? "Hoy" : sameYesterday ? "Ayer" : dd;
-        l.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Última actualización ' + prefix + " " + hh
-    } catch (e) { l.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Última actualización —' }
+    if (!ts) { l.innerHTML = _TOP_TIME_SVG + 'Última actualización —'; return; }
+    l.innerHTML = _TOP_TIME_SVG + 'Última actualización ' + _fmtTime(ts);
 }
 
 async function doRefresh() {
@@ -13090,7 +13100,7 @@ async function startImport(l) {
             setImportProgress(-1)
         }, 3e3);
         _importJob = null; _hideImportBanner();
-        localStorage.setItem("lastImportTime", Date.now().toString()); updateTopTime();
+        setLastImportTime(Date.now());
         h.classList.add("done");
         var estadoExtra = "";
         if (contData.length > 0 || factData.length > 0) {
@@ -13098,7 +13108,7 @@ async function startImport(l) {
                 '<div class="import-stat" style="background:#ecfdf5;border-color:#bbf7d0"><span class="import-stat-num" style="color:#059669">' + (estadoResult ? estadoResult.facturados : 0) + '</span><span class="import-stat-label">Facturados</span></div>';
         }
         var sinStockExtra = stats.sinStock ? '<div class="import-stat" style="background:#fafaf9;border-color:#d6d3d1"><span class="import-stat-num" style="color:#78716c">' + stats.sinStock + '</span><span class="import-stat-label">Sin Stock</span></div>' : "";
-        localStorage.setItem("lastImportTime", String(Date.now())), updateTopTime(), showToast("Importaci\xF3n completada: " + stats.inserted + " insertados, " + stats.updated + " actualizados" + (stats.sinStock ? ", " + stats.sinStock + " sin stock" : "") + (stats.errors.length ? " (" + stats.errors.length + " errores)" : ""), stats.errors.length ? "error" : "success", 5e3), k.innerHTML = '<div class="import-result-icon">' + (stats.errors.length ? "\u26A0" : "\u2713") + '</div><div class="import-result-title">' + (stats.errors.length ? "Importaci\xF3n completada con errores" : "Importaci\xF3n exitosa") + '</div><div class="import-result-stats"><div class="import-stat"><span class="import-stat-num">' + stats.inserted + '</span><span class="import-stat-label">Insertados</span></div><div class="import-stat"><span class="import-stat-num">' + stats.updated + '</span><span class="import-stat-label">Actualizados</span></div>' + sinStockExtra + estadoExtra + (stats.errors.length ? '<div class="import-stat is-error"><span class="import-stat-num">' + stats.errors.length + '</span><span class="import-stat-label">Errores</span></div>' : "") + "</div>" + (stats.errors.length ? '<details class="import-errors"><summary>Ver detalles de errores</summary>' + stats.errors.map(function(x) {
+        setLastImportTime(Date.now()), showToast("Importaci\xF3n completada: " + stats.inserted + " insertados, " + stats.updated + " actualizados" + (stats.sinStock ? ", " + stats.sinStock + " sin stock" : "") + (stats.errors.length ? " (" + stats.errors.length + " errores)" : ""), stats.errors.length ? "error" : "success", 5e3), k.innerHTML = '<div class="import-result-icon">' + (stats.errors.length ? "\u26A0" : "\u2713") + '</div><div class="import-result-title">' + (stats.errors.length ? "Importaci\xF3n completada con errores" : "Importaci\xF3n exitosa") + '</div><div class="import-result-stats"><div class="import-stat"><span class="import-stat-num">' + stats.inserted + '</span><span class="import-stat-label">Insertados</span></div><div class="import-stat"><span class="import-stat-num">' + stats.updated + '</span><span class="import-stat-label">Actualizados</span></div>' + sinStockExtra + estadoExtra + (stats.errors.length ? '<div class="import-stat is-error"><span class="import-stat-num">' + stats.errors.length + '</span><span class="import-stat-label">Errores</span></div>' : "") + "</div>" + (stats.errors.length ? '<details class="import-errors"><summary>Ver detalles de errores</summary>' + stats.errors.map(function(x) {
             return '<div class="import-error-row">' + esc(x.item) + ": " + esc(x.error) + "</div>"
         }).join("") + "</details>" : "") + '<button class="import-result-btn" onclick="renderImportView()">Cargar otro archivo</button>', k.style.display = "block"
     } catch (x) {
