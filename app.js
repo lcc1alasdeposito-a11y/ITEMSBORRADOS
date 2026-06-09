@@ -12972,7 +12972,7 @@ function renderImportView() {
     updateTopBrand("Cargar datos");
     updateTopTime();
     if (_importJob && !document.getElementById("importProgressInline")) { _importJob = null; _hideImportBanner(); }
-    if (!_importJob) l.innerHTML = '<div class="import-wrap"><div class="import-card"><div class="import-card-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div><h3 class="import-card-title">Importar Excel</h3><p class="import-card-desc">Seleccion\xE1 el archivo Excel con la hoja <strong>"resumen"</strong> para importar los items borrados a la base de datos.</p><div class="import-card-info"><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Los items ya gestionados no se sobrescriben</div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Las hojas pueden ser <strong>"resumen"</strong>, <strong>"stock"</strong>, <strong>"contabilizados"</strong> y <strong>"facturados"</strong></div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Formatos aceptados: .xlsx, .xls, .csv</div></div><button class="import-ref-btn" onclick="openFormatoHoja()" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Formato de Excel</button><div class="import-dropzone" id="importDropzone"><input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none"><div class="import-dropzone-content"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg><span class="import-dropzone-text">Hac\xE9 clic o arrastr\xE1 un archivo aqu\xED</span><span class="import-dropzone-hint">.xlsx, .xls o .csv</span></div></div><div style="margin:18px 0 4px;text-align:center"><label style="display:inline-flex;align-items:center;gap:10px;padding:13px 32px;background:#2563eb;color:#fff;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;box-shadow:0 2px 10px rgba(37,99,235,.3)" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'#2563eb\'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Seleccionar e Importar Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="var f=this.files[0];if(f)startImport(f)"></label></div><div id="importProgressInline" style="display:none"><div class="import-progress-inline-bar"><div class="import-progress-inline-fill" id="importProgressBar"></div></div><div class="import-progress-inline-info"><span id="importProgressText">Preparando...</span><span id="importProgressPct">0%</span></div><div id="importExtra" class="import-progress-extra"></div></div><div id="importResult" class="import-result" style="display:none"></div></div></div>';
+    if (!_importJob) l.innerHTML = '<div class="import-wrap"><div class="import-card"><div class="import-card-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div><h3 class="import-card-title">Importar Excel</h3><p class="import-card-desc">Seleccion\xE1 el archivo Excel con la hoja <strong>"resumen"</strong> para importar los items borrados a la base de datos.</p><div class="import-card-info"><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Los items ya gestionados no se sobrescriben</div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Las hojas pueden ser <strong>"resumen"</strong>, <strong>"stock"</strong>, <strong>"contabilizados"</strong> y <strong>"facturados"</strong></div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Formatos aceptados: .xlsx, .xls, .csv</div></div><button class="import-ref-btn" onclick="openFormatoHoja()" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Formato de Excel</button><div class="import-dropzone" id="importDropzone"><input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none"><div class="import-dropzone-content"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg><span class="import-dropzone-text">Hac\xE9 clic o arrastr\xE1 un archivo aqu\xED</span><span class="import-dropzone-hint">.xlsx, .xls o .csv</span></div></div><div style="margin:18px 0 4px;text-align:center"><label style="display:inline-flex;align-items:center;gap:10px;padding:13px 32px;background:#2563eb;color:#fff;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;box-shadow:0 2px 10px rgba(37,99,235,.3)" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'#2563eb\'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Seleccionar e Importar Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="var f=this.files[0];if(f)startImportDirecto(f)"></label></div><div id="importProgressInline" style="display:none"><div class="import-progress-inline-bar"><div class="import-progress-inline-fill" id="importProgressBar"></div></div><div class="import-progress-inline-info"><span id="importProgressText">Preparando...</span><span id="importProgressPct">0%</span></div><div id="importExtra" class="import-progress-extra"></div></div><div id="importResult" class="import-result" style="display:none"></div></div></div>';
     ensureXlsxLoaded().catch(function(h) {
         console.warn("xlsx:", h)
     });
@@ -13014,6 +13014,126 @@ function closeFormatoHoja() {
         h && d && h.contains(l.target) && l.target !== d && d.click()
     })
 })();
+async function startImportDirecto(file) {
+    var progEl = document.getElementById("importProgressInline");
+    var barEl  = document.getElementById("importProgressBar");
+    var pctEl  = document.getElementById("importProgressPct");
+    var txtEl  = document.getElementById("importProgressText");
+    var resEl  = document.getElementById("importResult");
+    var dropEl = document.getElementById("importDropzone");
+
+    function ui(msg, pct) {
+        if (txtEl) txtEl.textContent = msg;
+        if (pctEl) pctEl.textContent = pct + "%";
+        if (barEl) barEl.style.width = pct + "%";
+    }
+    if (progEl) progEl.style.display = "block";
+    if (dropEl) dropEl.style.display = "none";
+    if (resEl)  resEl.style.display  = "none";
+
+    var numNull = function(v) { var n = Number(v); return isNaN(n) || v === "" ? null : n; };
+    var strNull = function(v) { var s = String(v == null ? "" : v).trim(); return s || null; };
+    var toISO   = function(v) {
+        if (!v && v !== 0) return null;
+        if (typeof v === "number") return new Date(Math.round((v - 25569) * 86400000)).toISOString();
+        var p = String(v).trim().split("/");
+        if (p.length === 3) { var d = new Date(+p[2], +p[1]-1, +p[0]); return isNaN(d) ? null : d.toISOString(); }
+        return null;
+    };
+
+    try {
+        ui("Leyendo archivo...", 5);
+        var buf = await new Promise(function(ok, fail) {
+            var fr = new FileReader();
+            fr.onload  = function(e) { ok(e.target.result); };
+            fr.onerror = function()  { fail(new Error("No se pudo leer el archivo")); };
+            fr.readAsArrayBuffer(file);
+        });
+
+        ui("Analizando Excel...", 20);
+        if (typeof XLSX === "undefined") throw new Error("La librería XLSX no está cargada. Recargá la página.");
+        var wb = XLSX.read(new Uint8Array(buf), { type: "array", cellDates: false, cellNF: false, cellStyles: false });
+
+        var sName = wb.SheetNames.find(function(n) { return n.trim().toLowerCase().indexOf("resumen") >= 0; });
+        if (!sName) throw new Error('No se encontró hoja "resumen". Hojas disponibles: ' + wb.SheetNames.join(", "));
+
+        var filas = XLSX.utils.sheet_to_json(wb.Sheets[sName], { header: 1, defval: "" });
+        var hRow  = filas.findIndex(function(r) { return String(r[0]).trim() === "Fecha Carga"; });
+        if (hRow < 0) throw new Error('No se encontró la fila de encabezado "Fecha Carga" en hoja ' + sName);
+
+        ui("Preparando registros...", 35);
+        var rows = [];
+        for (var i = hRow + 1; i < filas.length; i++) {
+            var v = filas[i];
+            var doc = strNull(v[5]), mat = strNull(v[6]);
+            if (!doc || !mat || doc.toLowerCase().startsWith("total")) continue;
+            rows.push({
+                fecha_carga:       toISO(v[0]),
+                vendedor_externo:  strNull(v[1]),
+                vendedor_interno:  strNull(v[2]),
+                solic:             strNull(v[3]),
+                nombre:            strNull(v[4]),
+                doc_vtas:          doc,
+                material:          mat,
+                denominacion:      strNull(v[7]),
+                status:            strNull(v[8]),
+                motiv_rech:        strNull(v[9]),
+                descr_mot_rech:    strNull(v[10]),
+                almacen:           strNull(v[11]),
+                fecha_recibido:    toISO(v[12]),
+                cond_exp:          strNull(v[13]),
+                presentacion:      strNull(v[14]),
+                cantidad_recibida: numNull(v[15]),
+                cantidad_pedido:   numNull(v[16]),
+                cant_fact:         numNull(v[17]),
+                total_importe:     numNull(v[18]),
+                estado:            "pendiente"
+            });
+        }
+
+        if (rows.length === 0) throw new Error("No se encontraron filas con Doc Venta y Material. Revisá que las columnas F y G sean Doc Venta y Material.");
+
+        ui(rows.length + " registros leídos. Enviando a Supabase...", 40);
+        console.log("[IMPORT DIRECTO] Filas a insertar:", rows.length, "| Primera fila:", rows[0]);
+
+        var sb = getSupabase();
+        if (!sb) throw new Error("No se pudo conectar a la base de datos.");
+
+        var LOTE = 500, ok = 0, errSupa = null;
+        for (var x = 0; x < rows.length; x += LOTE) {
+            var lote = rows.slice(x, x + LOTE);
+            var r = await sb.from("items_borrados").upsert(lote, { onConflict: "doc_vtas,material,solic" });
+            if (r.error) { errSupa = r.error; console.error("[IMPORT DIRECTO] Error Supabase:", r.error); break; }
+            ok += lote.length;
+            ui("Enviando " + ok + " / " + rows.length + "...", Math.round(40 + (ok / rows.length) * 57));
+        }
+
+        if (errSupa) throw new Error("Error Supabase: " + (errSupa.message || JSON.stringify(errSupa)));
+
+        ui("¡Completado! " + ok + " registros", 100);
+        if (typeof setLastImportTime === "function") setLastImportTime(Date.now());
+        if (resEl) {
+            resEl.innerHTML = '<div class="import-result-icon">✓</div>' +
+                '<div class="import-result-title">Importaci\xF3n exitosa: ' + ok + ' registros cargados</div>' +
+                '<button class="import-result-btn" onclick="renderImportView()">Cargar otro archivo</button>';
+            resEl.style.display = "block";
+        }
+        showToast("Importaci\xF3n OK: " + ok + " registros", "success", 5000);
+
+    } catch(e) {
+        console.error("[IMPORT DIRECTO]", e);
+        if (progEl) progEl.style.display = "none";
+        if (dropEl) dropEl.style.display = "block";
+        if (resEl) {
+            resEl.innerHTML = '<div class="import-result-icon" style="color:#ef4444">✕</div>' +
+                '<div class="import-result-title" style="color:#ef4444">Error: ' + esc(e.message) + '</div>' +
+                '<button class="import-result-btn" onclick="renderImportView()">Intentar de nuevo</button>';
+            resEl.style.display = "block";
+        }
+        showToast("Error: " + e.message, "error", 8000);
+    }
+}
+
 async function startImport(l) {
     if (_importJob) { showToast('Ya hay una importación en curso', 'warning', 3000); return }
     _importJob = { cancelled: false };
