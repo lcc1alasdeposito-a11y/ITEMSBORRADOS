@@ -13031,7 +13031,7 @@ async function startImport(l) {
         b.textContent = "Preparando importación...", d.style.width = "1%", g.textContent = "1%", setImportProgress(1), await ensureXlsxLoaded(), b.textContent = "Analizando Excel… (no cierres esta ventana)", d.style.width = "2%", g.textContent = "2%", setImportProgress(2);
         console.log("[IMPORT] Iniciando readExcelFileWithWorker, archivo:", l.name, "tamaño:", l.size, "bytes");
         var tStart = Date.now(),
-            res = await readExcelFileWithWorker(l),
+            res = await readExcelFile(l),
             $ = res.valid,
             total = res.valid.length,
             valErrors = res.errors,
