@@ -68,7 +68,7 @@
           id:     payload.userId,
           email:  payload.email,
         },
-        exp: payload.exp || (Date.now() + 8 * 60 * 60 * 1000),
+        exp: Date.now() + 8 * 60 * 60 * 1000,
       }));
     } catch (e) {}
   }
