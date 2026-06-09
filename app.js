@@ -13102,7 +13102,7 @@ async function startImportDirecto(file) {
         var LOTE = 500, ok = 0, errSupa = null;
         for (var x = 0; x < rows.length; x += LOTE) {
             var lote = rows.slice(x, x + LOTE);
-            var r = await sb.from("items_borrados").upsert(lote, { onConflict: "doc_vtas,material,solic" });
+            var r = await sb.from("items_borrados").insert(lote);
             if (r.error) { errSupa = r.error; console.error("[IMPORT DIRECTO] Error Supabase:", r.error); break; }
             ok += lote.length;
             ui("Enviando " + ok + " / " + rows.length + "...", Math.round(40 + (ok / rows.length) * 57));
