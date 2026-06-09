@@ -12923,25 +12923,27 @@ function ensureXlsxLoaded() {
     xlsxLoadPromise = new Promise(function(resolve, reject) {
         var existing = document.querySelector('script[data-xlsx-loader="1"]');
         if (existing) {
+            if (typeof XLSX != "undefined") { resolve(XLSX); return }
             existing.addEventListener("load", function() {
                 typeof XLSX != "undefined" ? resolve(XLSX) : reject(new Error("La librería XLSX no quedó disponible"))
             }, { once: !0 });
             existing.addEventListener("error", function() {
                 xlsxLoadPromise = null;
+                if (existing.parentNode) existing.parentNode.removeChild(existing);
                 reject(new Error("No se pudo cargar la librería XLSX"))
             }, { once: !0 });
             return
         }
         var script = document.createElement("script");
-        script.src = "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.src = "xlsx.full.min.js";
         script.async = !0;
-        script.defer = !0;
         script.dataset.xlsxLoader = "1";
         script.onload = function() {
             typeof XLSX != "undefined" ? resolve(XLSX) : (xlsxLoadPromise = null, reject(new Error("La librería XLSX no quedó disponible")))
         };
         script.onerror = function() {
             xlsxLoadPromise = null;
+            if (script.parentNode) script.parentNode.removeChild(script);
             reject(new Error("No se pudo cargar la librería XLSX"))
         };
         document.head.appendChild(script)
