@@ -12916,6 +12916,14 @@ async function guardarUsuario() {
 }
 
 var xlsxLoadPromise = null;
+var _prewarmedWorker = null;
+function _prewarmXlsxWorker() {
+    if (_prewarmedWorker || typeof Worker === "undefined") return;
+    try {
+        _prewarmedWorker = new Worker("xlsx-worker.js");
+        _prewarmedWorker.onerror = function() { _prewarmedWorker = null; };
+    } catch(_) {}
+}
 
 function ensureXlsxLoaded() {
     if (typeof XLSX != "undefined") return Promise.resolve(XLSX);
@@ -12967,7 +12975,8 @@ function renderImportView() {
     if (!_importJob) l.innerHTML = '<div class="import-wrap"><div class="import-card"><div class="import-card-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div><h3 class="import-card-title">Importar Excel</h3><p class="import-card-desc">Seleccion\xE1 el archivo Excel con la hoja <strong>"resumen"</strong> para importar los items borrados a la base de datos.</p><div class="import-card-info"><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Los items ya gestionados no se sobrescriben</div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Las hojas pueden ser <strong>"resumen"</strong>, <strong>"stock"</strong>, <strong>"contabilizados"</strong> y <strong>"facturados"</strong></div><div class="import-info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Formatos aceptados: .xlsx, .xls, .csv</div></div><button class="import-ref-btn" onclick="openFormatoHoja()" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Formato de Excel</button><div class="import-dropzone" id="importDropzone"><input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display:none"><div class="import-dropzone-content"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg><span class="import-dropzone-text">Hac\xE9 clic o arrastr\xE1 un archivo aqu\xED</span><span class="import-dropzone-hint">.xlsx, .xls o .csv</span></div></div><div id="importProgressInline" style="display:none"><div class="import-progress-inline-bar"><div class="import-progress-inline-fill" id="importProgressBar"></div></div><div class="import-progress-inline-info"><span id="importProgressText">Preparando...</span><span id="importProgressPct">0%</span></div><div id="importExtra" class="import-progress-extra"></div></div><div id="importResult" class="import-result" style="display:none"></div></div></div>';
     ensureXlsxLoaded().catch(function(h) {
         console.warn("xlsx:", h)
-    })
+    });
+    _prewarmXlsxWorker();
 }
 
 function openFormatoHoja() {
@@ -13019,7 +13028,8 @@ async function startImport(l) {
     k.style.display = "none", h.style.display = "block", E && (E.style.display = "none"), I && (I.style.display = "none");
     _createImportBanner();
     try {
-        b.textContent = "Preparando importación...", d.style.width = "1%", g.textContent = "1%", setImportProgress(1), await ensureXlsxLoaded(), b.textContent = "Leyendo archivo...", d.style.width = "2%", g.textContent = "2%", setImportProgress(2);
+        b.textContent = "Preparando importación...", d.style.width = "1%", g.textContent = "1%", setImportProgress(1), await ensureXlsxLoaded(), b.textContent = "Analizando Excel… (no cierres esta ventana)", d.style.width = "2%", g.textContent = "2%", setImportProgress(2);
+        console.log("[IMPORT] Iniciando readExcelFileWithWorker, archivo:", l.name, "tamaño:", l.size, "bytes");
         var tStart = Date.now(),
             res = await readExcelFileWithWorker(l),
             $ = res.valid,
@@ -13030,6 +13040,7 @@ async function startImport(l) {
             stats = { inserted: 0, updated: 0, errors: [] },
             done = 0,
             etaEl = extra || { textContent: "" };
+        console.log("[IMPORT] Excel leído OK →", total, "válidos,", valErrors.length, "errores de formato, stock:", res.stock && res.stock.length);
         b.textContent = total + " registros le\xEDdos", d.style.width = "5%", g.textContent = "5%", setImportProgress(5);
         if (valErrors.length > 0) {
             var confirmed = await showImportValidationModal(valErrors, total);
@@ -13132,8 +13143,12 @@ function readExcelFileWithWorker(l) {
         reader.onerror = function() { d(new Error("Error al leer el archivo")) };
         reader.onload = function(e) {
             var buf = e.target.result;
-            var wDone = false, w;
-            try { w = new Worker("xlsx-worker.js"); } catch (_) { w = null; }
+            var wDone = false;
+            var w = _prewarmedWorker;
+            _prewarmedWorker = null;
+            if (!w) {
+                try { w = new Worker("xlsx-worker.js"); } catch (_) { w = null; }
+            }
             if (!w) { readExcelFile(l).then(h).catch(d); return }
             w.onmessage = function(msg) {
                 if (wDone) return; wDone = true; w.terminate();
