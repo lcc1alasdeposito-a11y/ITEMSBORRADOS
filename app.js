@@ -13021,7 +13021,7 @@ async function startImport(l) {
     try {
         b.textContent = "Preparando importación...", d.style.width = "1%", g.textContent = "1%", setImportProgress(1), await ensureXlsxLoaded(), b.textContent = "Leyendo archivo...", d.style.width = "2%", g.textContent = "2%", setImportProgress(2);
         var tStart = Date.now(),
-            res = await readExcelFile(l),
+            res = await readExcelFileWithWorker(l),
             $ = res.valid,
             total = res.valid.length,
             valErrors = res.errors,
@@ -13123,6 +13123,30 @@ async function startImport(l) {
         }
         setImportProgress(-1), h.style.display = "none", E && (E.style.display = "block"), I && (I.style.display = "inline-flex"), k.innerHTML = '<div class="import-result-icon" style="color:#ef4444">\u2715</div><div class="import-result-title" style="color:#ef4444">Error: ' + esc(x.message) + '</div><button class="import-result-btn" onclick="renderImportView()">Volver a intentar</button>', k.style.display = "block", showToast("Error en importaci\xF3n: " + x.message, "error", 6e3)
     }
+}
+
+function readExcelFileWithWorker(l) {
+    return new Promise(function(h, d) {
+        if (typeof Worker === "undefined") { readExcelFile(l).then(h).catch(d); return }
+        var reader = new FileReader();
+        reader.onerror = function() { d(new Error("Error al leer el archivo")) };
+        reader.onload = function(e) {
+            var buf = e.target.result;
+            var wDone = false, w;
+            try { w = new Worker("xlsx-worker.js"); } catch (_) { w = null; }
+            if (!w) { readExcelFile(l).then(h).catch(d); return }
+            w.onmessage = function(msg) {
+                if (wDone) return; wDone = true; w.terminate();
+                if (msg.data && msg.data.error) d(new Error(msg.data.error)); else h(msg.data);
+            };
+            w.onerror = function() {
+                if (wDone) return; wDone = true; w.terminate();
+                readExcelFile(l).then(h).catch(d);
+            };
+            w.postMessage(buf);
+        };
+        reader.readAsArrayBuffer(l);
+    })
 }
 
 function readExcelFile(l) {
