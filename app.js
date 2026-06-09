@@ -13093,32 +13093,98 @@ async function startImportDirecto(file) {
 
         if (rows.length === 0) throw new Error("No se encontraron filas con Doc Venta y Material. Revisá que las columnas F y G sean Doc Venta y Material.");
 
-        ui(rows.length + " registros leídos. Enviando a Supabase...", 40);
-        console.log("[IMPORT DIRECTO] Filas a insertar:", rows.length, "| Primera fila:", rows[0]);
+        // ── Hojas adicionales: stock / contabilizados / facturados ─
+        var stockData = [], contData = [], factData = [];
+        var norm = function(v) { return String(v||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,""); };
+        var findC = function(hdr, names) { var hn=hdr.map(norm); for(var ni=0;ni<names.length;ni++){var idx=hn.indexOf(names[ni]);if(idx!==-1)return idx;} return -1; };
+        var parseEstSheet = function(ws, hasFechaFact) {
+            var data=[], eRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+            if (!eRows.length) return data;
+            var hdr=eRows[0]||[];
+            var docI=findC(hdr,["docvtas","docventas","documentoventa"]);  if(docI===-1)docI=0;
+            var matI=findC(hdr,["material"]);                               if(matI===-1)matI=1;
+            var ctdI=findC(hdr,["ctdentr","ctdentrega","cantidad","cantidadentrada"]);
+            var fecI=hasFechaFact?findC(hdr,["fechafact","fechafactura","fechafacturacion"]):-1;
+            var facI=hasFechaFact?findC(hdr,["factura","nrofactura","numfactura","numerofactura"]):-1;
+            for(var ri=1;ri<eRows.length;ri++){
+                var row=eRows[ri], doc=strNull(row[docI]), mat=strNull(row[matI]);
+                if(!doc||!mat||doc.toLowerCase().startsWith("total")) continue;
+                data.push({ doc_vtas:doc, material:mat, ctd_entr:numNull(row[ctdI]),
+                    fecha_fact:fecI>=0?toISO(row[fecI]):null, factura:facI>=0?strNull(row[facI]):null });
+            }
+            return data;
+        };
+        var findWS = function(kw) { var sn=wb.SheetNames.find(function(n){return n.trim().toLowerCase().indexOf(kw)>=0;}); return sn?wb.Sheets[sn]:null; };
 
-        var sb = getSupabase();
-        if (!sb) throw new Error("No se pudo conectar a la base de datos.");
+        var stockWS = findWS("stock");
+        if (stockWS) {
+            var sRows = XLSX.utils.sheet_to_json(stockWS, {header:1, defval:""});
+            var sHdr = 0;
+            for (var si=0; si<Math.min(sRows.length,30); si++) {
+                if (String(sRows[si][0]||"").trim().toLowerCase().startsWith("material")) { sHdr=si; break; }
+            }
+            for (var si=sHdr+1; si<sRows.length; si++) {
+                var sr=sRows[si], mc=strNull(sr[0]);
+                if (!mc||mc.toLowerCase().startsWith("total")||mc.toLowerCase().startsWith("subtotal")) continue;
+                stockData.push({ material:mc, descripcion:strNull(sr[1]), almacen:strNull(sr[2])||"VAR", cantidad:numNull(sr[3])||0 });
+            }
+        }
+        var contWS = findWS("contabilizados"); if (contWS) contData = parseEstSheet(contWS, false);
+        var factWS = findWS("facturados");     if (factWS) factData = parseEstSheet(factWS, true);
 
-        var LOTE = 500, ok = 0, errSupa = null;
-        for (var x = 0; x < rows.length; x += LOTE) {
-            var lote = rows.slice(x, x + LOTE);
-            var r = await sb.from("items_borrados").insert(lote);
-            if (r.error) { errSupa = r.error; console.error("[IMPORT DIRECTO] Error Supabase:", r.error); break; }
-            ok += lote.length;
-            ui("Enviando " + ok + " / " + rows.length + "...", Math.round(40 + (ok / rows.length) * 57));
+        console.log("[IMPORT DIRECTO] Filas:", rows.length, "| Stock:", stockData.length, "| Cont:", contData.length, "| Fact:", factData.length);
+
+        // ── Stock (con confirmación) ────────────────────────────────
+        if (stockData.length > 0) {
+            var sPreview = normalizeStockData(stockData);
+            var sMsg = "Se encontraron " + stockData.length + " registros en la hoja 'stock'." +
+                (sPreview.merged > 0 ? " " + sPreview.merged + " duplicado(s) se unificar\xE1n." : "") +
+                " \xBFActualizar stock? Se borrar\xE1n los datos anteriores.";
+            if (await showConfirm("Actualizar stock", sMsg, "SI", "NO")) {
+                ui("Actualizando stock...", 38);
+                await ensureStockTable();
+                var sRes = await db_updateStock(stockData);
+                if (sRes.errors && sRes.errors.length) showToast("Stock: " + sRes.errors[0], "warning", 4000);
+            }
         }
 
-        if (errSupa) throw new Error("Error Supabase: " + (errSupa.message || JSON.stringify(errSupa)));
+        // ── Items con lógica completa (detección de conflictos, estados, borrado_num) ─
+        ui(rows.length + " registros le\xEDdos. Importando...", 40);
+        var LOTE = 500, inserted = 0, updated = 0, tStart = Date.now();
+        for (var x = 0; x < rows.length; x += LOTE) {
+            var lote = rows.slice(x, x + LOTE);
+            var iRes = await db_importItems(lote);
+            if (iRes.errors && iRes.errors.length) throw new Error(iRes.errors[0].error || JSON.stringify(iRes.errors[0]));
+            inserted += iRes.inserted;
+            updated  += iRes.updated;
+            var done = x + lote.length;
+            var rate = Date.now() > tStart ? Math.round(done / ((Date.now()-tStart)/1000)) : 0;
+            ui("Importando " + done + " / " + rows.length + (rate ? " \xB7 " + rate + " reg/s" : "") + "...",
+               Math.round(40 + (done / rows.length) * 55));
+        }
 
-        ui("¡Completado! " + ok + " registros", 100);
+        // ── Contabilizados / Facturados ────────────────────────────
+        if (contData.length > 0 || factData.length > 0) {
+            ui("Actualizando estados contabilizados/facturados...", 97);
+            var eRes = await db_updateEstadoFromSheets(contData, factData, function(){});
+            if (eRes && eRes.errors && eRes.errors.length) showToast("Estados: " + eRes.errors[0], "warning", 4000);
+        }
+
+        var elapsed = Math.round((Date.now()-tStart)/1000);
+        ui("\xA1Completado! (" + elapsed + "s)", 100);
         if (typeof setLastImportTime === "function") setLastImportTime(Date.now());
         if (resEl) {
             resEl.innerHTML = '<div class="import-result-icon">✓</div>' +
-                '<div class="import-result-title">Importaci\xF3n exitosa: ' + ok + ' registros cargados</div>' +
+                '<div class="import-result-title">Importaci\xF3n exitosa</div>' +
+                '<div class="import-result-stats">' +
+                '<div class="import-stat"><span class="import-stat-num">' + inserted + '</span><span class="import-stat-label">Insertados</span></div>' +
+                '<div class="import-stat"><span class="import-stat-num">' + updated + '</span><span class="import-stat-label">Actualizados</span></div>' +
+                (stockData.length ? '<div class="import-stat"><span class="import-stat-num">' + stockData.length + '</span><span class="import-stat-label">Stock</span></div>' : '') +
+                '</div>' +
                 '<button class="import-result-btn" onclick="renderImportView()">Cargar otro archivo</button>';
             resEl.style.display = "block";
         }
-        showToast("Importaci\xF3n OK: " + ok + " registros", "success", 5000);
+        showToast("Importaci\xF3n OK: " + inserted + " insertados, " + updated + " actualizados", "success", 5000);
 
     } catch(e) {
         console.error("[IMPORT DIRECTO]", e);
