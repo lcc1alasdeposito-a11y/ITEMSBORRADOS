@@ -29,8 +29,8 @@
   --soft-line:      #F0F0F0;
   --radius:         14px;
   --radius-xl:      24px;
-  --fast:           150ms cubic-bezier(.4,0,.2,1);
-  --base:           220ms cubic-bezier(.4,0,.2,1);
+  --fast:           var(--alas-dur-fast) var(--alas-ease);
+  --base:           var(--alas-dur-normal) var(--alas-ease);
 
   /* Aliases para variables del tema oscuro de styles.css */
   --text-muted:     var(--gray-500);
@@ -74,7 +74,7 @@ body {
   inset: 0 auto 0 0;
   width: 64px;
   overflow: hidden;
-  transition: width .38s cubic-bezier(.4,0,.2,1);
+  transition: width var(--alas-dur-normal) var(--alas-ease);
   background: linear-gradient(180deg, #0e6fa8 0%, #0B5F8D 55%, #084f78 100%);
   display: flex;
   align-items: stretch;
@@ -111,7 +111,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   flex-shrink: 0;
-  transition: background .22s ease, color .22s ease, box-shadow .22s ease;
+  transition: background var(--alas-dur-fast) var(--alas-ease), color var(--alas-dur-fast) var(--alas-ease), box-shadow var(--alas-dur-fast) var(--alas-ease);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
@@ -123,7 +123,7 @@ body {
   height: 22px;
   stroke-width: 1.75;
   flex-shrink: 0;
-  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  transition: transform var(--alas-dur-fast) var(--alas-ease);
 }
 .sidebar-icon:hover                    { color: #fff; background: rgba(255,255,255,.10); }
 .sidebar-icon:hover svg                { transform: scale(1.08); }
@@ -173,8 +173,8 @@ body {
   pointer-events: none;
   opacity: 0;
   transform: translateX(-8px);
-  transition: opacity .25s cubic-bezier(.4,0,.2,1) .08s,
-              transform .28s cubic-bezier(.4,0,.2,1) .08s;
+  transition: opacity   var(--alas-dur-normal) var(--alas-ease) var(--alas-stagger),
+              transform var(--alas-dur-normal) var(--alas-ease) var(--alas-stagger);
 }
 .sidebar-wave:hover .sidebar-icon .tooltip { opacity: 1; transform: translateX(0); }
 
@@ -347,7 +347,7 @@ body {
   color: var(--gray-500) !important;
   background: transparent !important;
   border-radius: 50% !important;
-  transition: all .16s ease;
+  transition: all var(--alas-dur-fast) var(--alas-ease);
 }
 .modal-close:hover { background: #FEF2F2 !important; color: var(--danger) !important; }
 .modal-body        { color: var(--gray-700) !important; background: var(--white) !important; }
