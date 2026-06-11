@@ -187,13 +187,10 @@
           <!-- Espaciador -->
           <div class="sidebar-spacer"></div>
 
-          <!-- Usuario visible en sidebar -->
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:default;pointer-events:none;margin-bottom:4px;">
-            <div class="sidebar-avatar-icon" id="sidebarAvatar" style="flex-shrink:0">U<div class="online-dot"></div></div>
-            <div style="min-width:0;flex:1;overflow:hidden;">
-              <div id="sidebarUserName" style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Usuario</div>
-              <div id="sidebarUserRole" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-            </div>
+          <!-- Chip usuario estilo ALAS -->
+          <div id="ssoUserChip" style="display:none;width:100%;padding:6px 12px;align-items:center;gap:13px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;flex-shrink:0;margin-bottom:4px;pointer-events:none;cursor:default;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="21" height="21" stroke-width="1.6" style="flex-shrink:0;"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-7 8-7s8 3 8 7"/></svg>
+            <span id="sidebarUserName" style="font-size:12px;font-weight:600;letter-spacing:.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Usuario</span>
           </div>
 
           <!-- Volver al Menú -->

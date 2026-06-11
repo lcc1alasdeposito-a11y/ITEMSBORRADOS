@@ -48,14 +48,11 @@
     if (loginOverlay) loginOverlay.style.display = 'none';
     if (appMain)      appMain.style.display = 'flex';
 
-    // Actualizar sidebar
-    var nameEl   = document.getElementById('sidebarUserName');
-    var roleEl   = document.getElementById('sidebarUserRole');
+    // Mostrar chip de usuario
+    var nameEl  = document.getElementById('sidebarUserName');
+    var chipEl  = document.getElementById('ssoUserChip');
     if (nameEl) nameEl.textContent = window.currentUser.nombre;
-    if (roleEl) roleEl.textContent = getRoleLabel(window.currentUser.rol);
-    if (typeof window.updateSidebarAvatar === 'function') {
-      window.updateSidebarAvatar(window.currentUser.nombre);
-    }
+    if (chipEl) chipEl.style.display = 'flex';
 
     // Mostrar botones según rol
     var role = window.currentUser.rol;
