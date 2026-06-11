@@ -187,13 +187,13 @@
           <!-- Espaciador -->
           <div class="sidebar-spacer"></div>
 
-          <!-- Usuario (solo display, app.js actualiza sidebarAvatar/Name/Role) -->
-          <div class="sidebar-icon" style="cursor:default;pointer-events:none;">
-            <div class="sidebar-avatar-icon" id="sidebarAvatar">U<div class="online-dot"></div></div>
-            <span class="tooltip">
-              <span id="sidebarUserName" style="font-size:13px;font-weight:600;">Usuario</span>
-              <span id="sidebarUserRole" style="font-size:11px;opacity:.65;display:block;margin-top:2px;"></span>
-            </span>
+          <!-- Usuario visible en sidebar -->
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:default;pointer-events:none;margin-bottom:4px;">
+            <div class="sidebar-avatar-icon" id="sidebarAvatar" style="flex-shrink:0">U<div class="online-dot"></div></div>
+            <div style="min-width:0;flex:1;overflow:hidden;">
+              <div id="sidebarUserName" style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Usuario</div>
+              <div id="sidebarUserRole" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+            </div>
           </div>
 
           <!-- Volver al Menú -->
