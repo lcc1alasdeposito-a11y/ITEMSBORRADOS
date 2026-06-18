@@ -10173,7 +10173,7 @@ function enhanceSelect(l) {
     }
 }
 
-var _lastImportTs = parseInt(localStorage.getItem("lastImportTime") || "0") || 0;
+var _lastImportTs = 0;
 var _TOP_TIME_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
 function _fmtTime(ts) {
@@ -10188,15 +10188,28 @@ function _fmtTime(ts) {
 
 function setLastImportTime(ts) {
     _lastImportTs = ts;
-    try { localStorage.setItem("lastImportTime", String(ts)); } catch(e) {}
     updateTopTime();
 }
 
-function updateTopTime() {
+async function fetchLastImportFromSupabase() {
+    try {
+        var sb = getSupabase();
+        if (!sb) return 0;
+        var { data } = await sb.from("items_borrados").select("fecha_carga").order("fecha_carga", { ascending: false }).limit(1);
+        if (data && data.length && data[0].fecha_carga) return new Date(data[0].fecha_carga).getTime();
+        return 0;
+    } catch (_) { return 0; }
+}
+
+async function updateTopTime() {
     var l = document.getElementById("topUpdate");
     if (!l) return;
-    var ts = _lastImportTs || parseInt(localStorage.getItem("lastImportTime") || "0") || 0;
     l.style.display = "inline-flex";
+    var ts = _lastImportTs;
+    if (!ts) {
+        ts = await fetchLastImportFromSupabase();
+        if (ts) _lastImportTs = ts;
+    }
     if (!ts) { l.innerHTML = _TOP_TIME_SVG + 'Última actualización —'; return; }
     l.innerHTML = _TOP_TIME_SVG + 'Última actualización ' + _fmtTime(ts);
 }
