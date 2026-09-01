@@ -9590,7 +9590,7 @@ async function db_getItems(l) {
     if (b > 0) {
         var d = sup.from("items_borrados").select("*", { count: "exact" });
         if (l.search) { const $ = l.search; d = d.or("doc_vtas.ilike.%" + $ + "%,material.ilike.%" + $ + "%,nombre.ilike.%" + $ + "%,solic.ilike.%" + $ + "%,denominacion.ilike.%" + $ + "%") }
-        l.estado && (d = d.eq("estado", l.estado)), l.vendedor && (d = d.eq("vendedor_externo", l.vendedor)), l.fecha_desde && (d = d.gte("fecha_carga", l.fecha_desde)), l.fecha_hasta && (d = d.lte("fecha_carga", l.fecha_hasta));
+        l.estado && (d = d.eq("estado", l.estado)), l.vendedor && (d = d.eq("vendedor_externo", l.vendedor)), l.almacen && (d = d.eq("almacen", l.almacen)), l.fecha_desde && (d = d.gte("fecha_carga", l.fecha_desde)), l.fecha_hasta && (d = d.lte("fecha_carga", l.fecha_hasta));
         const g = l.page || 1, $ = (g - 1) * b, L = $ + b - 1;
         d = d.range($, L);
         const { data: k, error: E, count: I } = await d.order("fecha_carga", { ascending: !1 });
@@ -9690,13 +9690,14 @@ async function db_getRecentActivity(l) {
     if (g) throw g;
     return d || []
 }
-async function db_getChartData(desde, hasta) {
+async function db_getChartData(desde, hasta, almacen) {
     var sup = getSupabase();
     if (!desde) { var def = new Date(); def.setDate(def.getDate() - 90); desde = def.toISOString().substring(0, 10) }
     if (!hasta) { hasta = new Date().toISOString().substring(0, 10) }
     var qCount = sup.from("items_borrados").select("id", { count: "exact" });
     qCount = qCount.gte("fecha_carga", desde + "T00:00:00");
     qCount = qCount.lte("fecha_carga", hasta + "T23:59:59");
+    if (almacen) qCount = qCount.eq("almacen", almacen);
     var { count: totalCount, error: countErr } = await qCount;
     if (countErr) throw countErr;
     if (!totalCount) return [];
@@ -9705,6 +9706,7 @@ async function db_getChartData(desde, hasta) {
         var q = sup.from("items_borrados").select("fecha_carga, total_importe");
         q = q.gte("fecha_carga", desde + "T00:00:00");
         q = q.lte("fecha_carga", hasta + "T23:59:59");
+        if (almacen) q = q.eq("almacen", almacen);
         batchPromises.push(q.range(offset, offset + batchSize - 1).order("fecha_carga", { ascending: !0 }))
     }
     var batchResults = await Promise.all(batchPromises);
@@ -9793,16 +9795,25 @@ async function db_getRecuperadosFlujoItems(scope, limit) {
     });
     return { items: items.slice(0, size), count: count }
 }
-async function db_getStats(l, desde, hasta) {
+async function db_getStats(l, desde, hasta, almacen) {
     requireAuth();
     const h = getSupabase();
 
     // 1 sola llamada al RPC en lugar de 19 queries paralelas
-    const { data: s, error: rpcErr } = await h.rpc('get_dashboard_stats', {
+    var _rpcParams = {
         p_vendedor: l || null,
         p_desde: desde || null,
         p_hasta: hasta || null
-    });
+    };
+    if (almacen) _rpcParams.p_almacen = almacen; // requiere RPC actualizada (ver update_rpc_almacen.sql)
+    var _rpc = await h.rpc('get_dashboard_stats', _rpcParams);
+    var s = _rpc.data, rpcErr = _rpc.error;
+    if (rpcErr && almacen) {
+        // La RPC todavía no acepta p_almacen: reintenta sin él (KPIs sin filtrar por almacén)
+        delete _rpcParams.p_almacen;
+        var _rpc2 = await h.rpc('get_dashboard_stats', _rpcParams);
+        s = _rpc2.data; rpcErr = _rpc2.error;
+    }
     if (rpcErr) throw new Error("Error al obtener stats: " + rpcErr.message);
 
     var flujoRecuperado        = (s.recuperado || 0) + (s.contabilizado || 0) + (s.facturado || 0),
@@ -9819,6 +9830,7 @@ async function db_getStats(l, desde, hasta) {
     try {
         var O = h.from("items_borrados").select("incidencia").eq("estado", "no_recuperado").not("incidencia", "is", null);
         if (l) O = O.eq("vendedor_externo", l);
+        if (almacen) O = O.eq("almacen", almacen);
         if (desde) O = O.gte("fecha_carga", desde + "T00:00:00");
         if (hasta) O = O.lte("fecha_carga", hasta + "T23:59:59");
         var { data: N } = await O;
@@ -10801,6 +10813,9 @@ function setDashLoading(root, isLoading) {
     root.appendChild(overlay);
 }
 
+var _dashAlmacen = "";
+var _dashAlmacenList = [];
+function onDashAlmacen() { var s = document.getElementById("dashFilterAlmacen"); _dashAlmacen = s ? s.value : ""; renderDashboard(); }
 async function renderDashboard() {
     const l = document.getElementById("vwDashboard");
     var renderSeq = ++_dashRenderSeq;
@@ -10819,22 +10834,30 @@ async function renderDashboard() {
             return q;
         }
         const [stats, venRows, cliRows, chartData] = await Promise.all([
-            db_getStats(null, dashDesde, dashHasta),
-            applyDashDateFilter(h.from("items_borrados").select("vendedor_externo, total_importe, estado").not("vendedor_externo", "is", null)),
-            applyDashDateFilter(h.from("items_borrados").select("nombre, total_importe, estado").not("nombre", "is", null)),
-            db_getChartData(dashDesde, dashHasta)
+            db_getStats(null, dashDesde, dashHasta, _dashAlmacen),
+            applyDashDateFilter(h.from("items_borrados").select("vendedor_externo, total_importe, estado, almacen").not("vendedor_externo", "is", null)),
+            applyDashDateFilter(h.from("items_borrados").select("nombre, total_importe, estado, almacen").not("nombre", "is", null)),
+            db_getChartData(dashDesde, dashHasta, _dashAlmacen)
         ]);
         if (renderSeq !== _dashRenderSeq) return;
+        // Lista de almacenes disponibles (del rango de fechas, sin filtrar por almacen)
+        var _almSet = {};
+        (venRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; });
+        (cliRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; });
+        _dashAlmacenList = Object.keys(_almSet).sort();
+        if (_dashAlmacen && _dashAlmacenList.indexOf(_dashAlmacen) < 0) _dashAlmacen = "";
         var venMap = {}, cliMap = {};
         var RES_ESTS = ["pendiente", "recuperado", "contabilizado", "facturado", "no_recuperado", "sin_stock"];
         function mkMapEntry() { var e = { items: 0, monto: 0, est: {} }; RES_ESTS.forEach(function(s) { e.est[s] = { items: 0, monto: 0 }; }); return e; }
         (venRows.data || []).forEach(function(r) {
+            if (_dashAlmacen && String(r.almacen || "").trim() !== _dashAlmacen) return;
             var v = r.vendedor_externo || "Sin Vendedor";
             venMap[v] = venMap[v] || mkMapEntry();
             venMap[v].items++; venMap[v].monto += Number(r.total_importe) || 0;
             var es = r.estado || "pendiente"; if (venMap[v].est[es]) { venMap[v].est[es].items++; venMap[v].est[es].monto += Number(r.total_importe) || 0; }
         });
         (cliRows.data || []).forEach(function(r) {
+            if (_dashAlmacen && String(r.almacen || "").trim() !== _dashAlmacen) return;
             var c = r.nombre || "Sin Cliente";
             cliMap[c] = cliMap[c] || mkMapEntry();
             cliMap[c].items++; cliMap[c].monto += Number(r.total_importe) || 0;
@@ -11124,6 +11147,7 @@ function buildDashHtml(l, venList, cliList, chartData) {
         '</div>' +
         '<button class="dash-all-months-btn' + (isAllMonths ? ' active' : '') + '" type="button" onclick="showAllDashMonths()" title="Mostrar todos los meses" aria-label="Mostrar todos los meses">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h8M8 18h5"/></svg>Todo</button>' +
+        '<div class="dash-alm-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><select id="dashFilterAlmacen" class="resumen-search-select" onchange="onDashAlmacen()"><option value="">Todos los almacenes</option>' + _dashAlmacenList.map(function(a) { return '<option value="' + escAttr(a) + '"' + (_dashAlmacen === a ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('') + '</select></div>' +
         '<button id="btnExportarExcel" class="dash-export-btn" type="button" onclick="exportarExcelDashboard()" title="Exportar pedidos a Excel por estado">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
             'Exportar Excel' +
@@ -14063,21 +14087,21 @@ function _cDel(prefix) {
 
 // Wrappers con cache de 60s para queries costosas del dashboard
 var _db_getStats_orig = db_getStats;
-db_getStats = async function(vendedor, desde, hasta) {
-    var key = 'stats\x01' + (vendedor || '') + '\x01' + (desde || '') + '\x01' + (hasta || '');
+db_getStats = async function(vendedor, desde, hasta, almacen) {
+    var key = 'stats\x01' + (vendedor || '') + '\x01' + (desde || '') + '\x01' + (hasta || '') + '\x01' + (almacen || '');
     var hit = _cGet(key);
     if (hit !== null) return hit;
-    var result = await _db_getStats_orig(vendedor, desde, hasta);
+    var result = await _db_getStats_orig(vendedor, desde, hasta, almacen);
     _cSet(key, result, 60000);
     return result;
 };
 
 var _db_getChartData_orig = db_getChartData;
-db_getChartData = async function(desde, hasta) {
-    var key = 'chart\x01' + (desde || '') + '\x01' + (hasta || '');
+db_getChartData = async function(desde, hasta, almacen) {
+    var key = 'chart\x01' + (desde || '') + '\x01' + (hasta || '') + '\x01' + (almacen || '');
     var hit = _cGet(key);
     if (hit !== null) return hit;
-    var result = await _db_getChartData_orig(desde, hasta);
+    var result = await _db_getChartData_orig(desde, hasta, almacen);
     _cSet(key, result, 60000);
     return result;
 };
@@ -14152,7 +14176,7 @@ async function exportarExcelDashboard() {
         function brd(argb)     { var s = { style: 'thin', color: { argb: argb || 'FFE2E8F0' } }; return { top: s, bottom: s, left: s, right: s }; }
 
         var results = await Promise.all(ESTADOS_EXPORT.map(function(e) {
-            return db_getItems({ estado: e.key, limit: 0, fecha_desde: desde, fecha_hasta: hasta });
+            return db_getItems({ estado: e.key, limit: 0, fecha_desde: desde, fecha_hasta: hasta, almacen: _dashAlmacen || undefined });
         }));
 
         var wb  = new ExcelJS.Workbook();
