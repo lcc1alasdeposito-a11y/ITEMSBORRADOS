@@ -10860,6 +10860,16 @@ var _dashAlmacen = "";
 var _dashAlmacenList = [];
 var _dashAlmacenHasBlank = false;
 function onDashAlmacen() { var s = document.getElementById("dashFilterAlmacen"); _dashAlmacen = s ? s.value : ""; renderDashboard(); }
+// Setea un <select> realzado (enhanceSelect) por código y actualiza su display visible.
+function _setEnhSelect(id, value, label) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    sel.value = value;
+    var ssel = sel.nextElementSibling && sel.nextElementSibling.classList && sel.nextElementSibling.classList.contains("ssel") ? sel.nextElementSibling : (sel.parentNode ? sel.parentNode.querySelector(".ssel") : null);
+    if (ssel) { var dt = ssel.querySelector(".ssel-dt"); if (dt) dt.textContent = label; }
+}
+function filterItemsSinAlmacen() { _setEnhSelect("itemsFilterAlmacen", "__SIN__", "Sin almacén"); if (typeof onItemsFilter === "function") onItemsFilter(); }
+function filterRecupSinAlmacen() { _setEnhSelect("recupFilterAlmacen", "__SIN__", "Sin almacén"); if (typeof onRecupFilter === "function") onRecupFilter(); }
 function selectDashAlm(v) { _dashAlmacen = v || ""; closeDashAlmDropdown(); renderDashboard(); }
 function _dashAlmOutside(e) { var dd = document.getElementById("dashAlmDD"); if (dd && !dd.contains(e.target)) closeDashAlmDropdown(); }
 function openDashAlmDropdown() {
@@ -11993,6 +12003,12 @@ async function renderItemsView() {
             var _hasBlank = _rawAlm.some(function(a) { return a === "" });
             alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("") + (_hasBlank ? '<option value="__SIN__">Sin almacén</option>' : "");
         }
+        var _noAlm = itemsState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
+        var _ban = document.getElementById("itemsNoAlmBanner");
+        if (_ban) {
+            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="filterItemsSinAlmacen()">Ver lista</button>'; }
+            else _ban.style.display = "none";
+        }
         cacheUiRows(itemsState.all);
         restoreItemsFilterState(prevFilters);
         enhanceSelect("itemsFilterGrupo");
@@ -12065,6 +12081,7 @@ function buildItemsHtml() {
       </div>
     </div>
 
+    <div class="no-alm-banner" id="itemsNoAlmBanner" style="display:none"></div>
     <div class="items-count" id="itemsCount"></div>
     <div id="itemsBulkBar">
       <span id="itemsBulkCount">0 seleccionados</span>
@@ -12524,6 +12541,12 @@ async function renderRecuperadosView() {
             var _hasBlank = _rawAlm.some(function(a) { return a === "" });
             alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("") + (_hasBlank ? '<option value="__SIN__">Sin almacén</option>' : "");
         }
+        var _noAlmR = recupState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
+        var _banR = document.getElementById("recupNoAlmBanner");
+        if (_banR) {
+            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button>'; }
+            else _banR.style.display = "none";
+        }
         cacheUiRows(recupState.all);
         restoreRecupFilterState(prevFilters);
         enhanceSelect("recupFilterEstado");
@@ -12584,6 +12607,7 @@ function buildRecupHtml() {
         </div>
       </div>
     </div>
+    <div class="no-alm-banner" id="recupNoAlmBanner" style="display:none"></div>
     <div class="items-count" id="recupCount"></div>
     <div class="items-table-wrap pro-table-wrap">
       <table class="items-table pro-table">
