@@ -10878,7 +10878,7 @@ function _exportSinAlmacenExcel(rows, filename) {
         data.push([
             r.fecha_carga ? String(r.fecha_carga).substring(0, 10) : "",
             r.doc_vtas || "", r.material || "", r.denominacion || "", r.nombre || "", r.solic || "", r.vendedor_externo || "",
-            Number(r.cantidad != null ? r.cantidad : (r.cant || 0)) || 0, Number(r.total_importe || 0) || 0, r.estado || ""
+            Number(r.cantidad_pedido || 0) || 0, Number(r.total_importe || 0) || 0, r.estado || ""
         ]);
     });
     var ws = XLSX.utils.aoa_to_sheet(data);
