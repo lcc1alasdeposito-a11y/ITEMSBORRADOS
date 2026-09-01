@@ -11988,8 +11988,10 @@ async function renderItemsView() {
         } catch (catErr) { console.warn("Could not load catalogo:", catErr) }
         var alEl = document.getElementById("itemsFilterAlmacen");
         if (alEl) {
-            var almacenes = [...new Set(itemsState.all.map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
-            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("");
+            var _rawAlm = itemsState.all.map(function(b) { return String(b.almacen || "").trim() });
+            var almacenes = [...new Set(_rawAlm.filter(Boolean))].sort();
+            var _hasBlank = _rawAlm.some(function(a) { return a === "" });
+            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("") + (_hasBlank ? '<option value="__SIN__">Sin almacén</option>' : "");
         }
         cacheUiRows(itemsState.all);
         restoreItemsFilterState(prevFilters);
@@ -12272,7 +12274,7 @@ function applyItemsFilters() {
         if (h && w.estado !== h || d && (w.vendedor_externo || "") !== d) return !1;
         if (grupoF && (w._grupo || "") !== grupoF) return !1;
         if (marcaF && (w._marca || "") !== marcaF) return !1;
-        if (almacenF && (w.almacen || "") !== almacenF) return !1;
+        if (almacenF) { var _wa = String(w.almacen || "").trim(); if (almacenF === "__SIN__" ? _wa !== "" : _wa !== almacenF) return !1; }
         if (!rowInDateBounds(w, bounds)) return !1;
         if (stockFilter === "ok" && w._stockLdalNum < w._cantidadPedidoNum) return !1;
         if (stockFilter === "bajo" && w._stockLdalNum >= w._cantidadPedidoNum) return !1;
@@ -12517,8 +12519,10 @@ async function renderRecuperadosView() {
         } catch (catErr) { console.warn("Could not load catalogo:", catErr) }
         var alEl = document.getElementById("recupFilterAlmacen");
         if (alEl) {
-            var almacenes = [...new Set(recupState.all.map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
-            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("");
+            var _rawAlm = recupState.all.map(function(b) { return String(b.almacen || "").trim() });
+            var almacenes = [...new Set(_rawAlm.filter(Boolean))].sort();
+            var _hasBlank = _rawAlm.some(function(a) { return a === "" });
+            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("") + (_hasBlank ? '<option value="__SIN__">Sin almacén</option>' : "");
         }
         cacheUiRows(recupState.all);
         restoreRecupFilterState(prevFilters);
@@ -12694,7 +12698,7 @@ function applyRecupFilters() {
         if (m && (I.vendedor_externo || "") !== m) return !1;
         if (grupoF && (I._grupo || "") !== grupoF) return !1;
         if (marcaF && (I._marca || "") !== marcaF) return !1;
-        if (almacenF && (I.almacen || "") !== almacenF) return !1;
+        if (almacenF) { var _ia = String(I.almacen || "").trim(); if (almacenF === "__SIN__" ? _ia !== "" : _ia !== almacenF) return !1; }
         if (!rowInDateBounds(I, bounds)) return !1;
         if (!cachedSearchIncludes(I._recupSearch, l)) return !1;
         return !0
