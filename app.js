@@ -12026,7 +12026,7 @@ async function renderItemsView() {
         var _noAlm = itemsState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _ban = document.getElementById("itemsNoAlmBanner");
         if (_ban) {
-            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="_openSinAlmModal()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; _animNoAlmBanner(_ban); }
+            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="_openSinAlmModal()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button><button type="button" class="nab-imp" onclick="_pickAlmacenExcel()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar</button>'; _animNoAlmBanner(_ban); }
             else _ban.style.display = "none";
         }
         cacheUiRows(itemsState.all);
@@ -12290,6 +12290,56 @@ function _animNoAlmBanner(ban) {
     var ic = ban.querySelector("svg");
     if (ic) gsap.fromTo(ic, { scale: 0, rotate: -25 }, { scale: 1, rotate: 0, duration: .5, delay: .08, ease: "back.out(2.2)" });
     gsap.from(ban.querySelectorAll("button"), { opacity: 0, x: 10, duration: .34, stagger: .07, delay: .12, ease: "back.out(1.6)", clearProps: "all" });
+}
+// ===== Importar Excel actualizado (columna Almacén) y actualizar en masa =====
+function _pickAlmacenExcel() {
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = ".xlsx,.xls,.csv";
+    inp.onchange = function() { var f = inp.files && inp.files[0]; if (f) _importAlmacenExcel(f); };
+    inp.click();
+}
+async function _importAlmacenExcel(file) {
+    if (typeof XLSX === "undefined") { showToast("No se pudo leer el Excel (exportador no disponible)", "error"); return; }
+    try {
+        var buf = await file.arrayBuffer();
+        var wb = XLSX.read(buf, { type: "array" });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        if (rows.length < 2) { showToast("El Excel está vacío", "error"); return; }
+        var hdr = rows[0];
+        var norm = function(s) { return String(s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); };
+        var known = ["fecha carga", "doc. ventas", "documento", "material", "denominacion", "cliente", "solic.", "solic", "vendedor externo", "cantidad", "total importe", "estado"];
+        var almIdx = hdr.findIndex(function(h) { return known.indexOf(norm(h)) < 0; });               // la columna que NO es de las conocidas = almacén (tolera typos)
+        var docIdx = hdr.findIndex(function(h) { return norm(h).indexOf("doc") >= 0; });
+        var matIdx = hdr.findIndex(function(h) { return norm(h) === "material"; });
+        var solIdx = hdr.findIndex(function(h) { return norm(h).indexOf("solic") >= 0; });
+        if (almIdx < 0) { showToast("No encontré una columna de almacén en el Excel", "error"); return; }
+        if (docIdx < 0 || matIdx < 0) { showToast("Faltan columnas Doc. Ventas / Material para cruzar", "error"); return; }
+        // Índice de items SIN almacén por doc|material|solic
+        var idx = {};
+        (itemsState.all || []).forEach(function(it) {
+            if (String(it.almacen || "").trim() !== "") return;
+            var k = String(it.doc_vtas || "").trim() + "|" + String(it.material || "").trim() + "|" + String(it.solic || "").trim();
+            (idx[k] = idx[k] || []).push(it);
+        });
+        var assign = {}, sinValor = 0, sinMatch = 0;
+        for (var i = 1; i < rows.length; i++) {
+            var r = rows[i]; if (!r || !r.length) continue;
+            var alm = String(r[almIdx] || "").trim().toUpperCase(); if (!alm) { sinValor++; continue; }
+            var k = String(r[docIdx] || "").trim() + "|" + String(r[matIdx] || "").trim() + "|" + String(solIdx >= 0 ? (r[solIdx] || "") : "").trim();
+            var hit = idx[k];
+            if (hit && hit.length) hit.forEach(function(it) { assign[it.id] = alm; });
+            else sinMatch++;
+        }
+        var ids = Object.keys(assign);
+        if (!ids.length) { showToast("No hubo coincidencias con items sin almacén", "error", 5000); return; }
+        var ok = await showConfirm("Actualizar almacenes desde Excel", "Se van a actualizar <b>" + ids.length + "</b> items." + (sinMatch ? "<br>" + sinMatch + " filas del Excel no coincidieron con items sin almacén." : "") + (sinValor ? "<br>" + sinValor + " filas sin almacén cargado (se ignoran)." : ""), "Actualizar", "Cancelar");
+        if (!ok) return;
+        var byAlm = {}; ids.forEach(function(id) { var a = assign[id]; (byAlm[a] = byAlm[a] || []).push(id); });
+        for (var a in byAlm) { var list = byAlm[a]; for (var j = 0; j < list.length; j += 100) { var batch = list.slice(j, j + 100); var { error } = await getSupabase().from("items_borrados").update({ almacen: a }).in("id", batch); if (error) throw error; } }
+        (itemsState.all || []).forEach(function(it) { if (assign[it.id] != null) it.almacen = assign[it.id]; });
+        showToast(ids.length + " items actualizados desde el Excel" + (sinMatch ? " · " + sinMatch + " sin match" : ""), "success", 5000);
+        renderItemsView();
+    } catch (e) { showToast("Error al importar: " + e.message, "error"); }
 }
 // ===== Modal "Asignar almacén" — lista de items sin almacén, selección + asignación =====
 var _sinAlmAssign = {};

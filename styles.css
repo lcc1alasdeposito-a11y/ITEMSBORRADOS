@@ -4730,3 +4730,6 @@
 .sam-save:hover:not(:disabled){background:#1d4ed8}
 .sam-save:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:720px){.sam-row{grid-template-columns:24px 1fr 70px}.sam-c-mat,.sam-c-doc{display:none}}
+.no-alm-banner .nab-imp{background:#16a34a;color:#fff;border:none}
+.no-alm-banner .nab-imp:hover{background:#15803d}
+.no-alm-banner .nab-imp svg{color:#fff}
