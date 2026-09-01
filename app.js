@@ -11519,7 +11519,7 @@ var DATE_FILTER_CONFIG = {
     }
 };
 var ITEMS_FILTER_IDS = ["itemsSearch", "itemsFilterVendedor", "itemsFilterStock", "itemsFilterGrupo", "itemsFilterMarca", "itemsFilterAlmacen", "itemsFilterFechaDesde", "itemsFilterFechaHasta"];
-var RECUP_FILTER_IDS = ["recupSearch", "recupFilterEstado", "recupFilterVendedor", "recupFilterGrupo", "recupFilterMarca", "recupFilterDesde", "recupFilterHasta"];
+var RECUP_FILTER_IDS = ["recupSearch", "recupFilterEstado", "recupFilterVendedor", "recupFilterGrupo", "recupFilterMarca", "recupFilterAlmacen", "recupFilterDesde", "recupFilterHasta"];
 var INCID_FILTER_IDS = ["incidSearch", "incidFilterVendedor", "incidFilterGrupo", "incidFilterMarca", "incidFilterDesde", "incidFilterHasta"];
 
 function getDateFilterConfig(tab) {
@@ -12401,12 +12401,18 @@ async function renderRecuperadosView() {
             var mEl = document.getElementById("recupFilterMarca");
             if (mEl) { mEl.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(function(m) { return '<option value="' + esc(m) + '">' + esc(m) + "</option>" }).join("") }
         } catch (catErr) { console.warn("Could not load catalogo:", catErr) }
+        var alEl = document.getElementById("recupFilterAlmacen");
+        if (alEl) {
+            var almacenes = [...new Set(recupState.all.map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
+            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("");
+        }
         cacheUiRows(recupState.all);
         restoreRecupFilterState(prevFilters);
         enhanceSelect("recupFilterEstado");
         enhanceSelect("recupFilterGrupo");
         enhanceSelect("recupFilterMarca");
         enhanceSelect("recupFilterVendedor");
+        enhanceSelect("recupFilterAlmacen");
         applyRecupFilters()
     } catch (d) {
         l.innerHTML = '<div class="error-state"><div class="error-msg">Error: ' + esc(d.message) + "</div></div>"
@@ -12451,6 +12457,11 @@ function buildRecupHtml() {
         <div class="pro-filter-pill">
           <select id="recupFilterMarca" onchange="onRecupFilter()">
             <option value="">Todas las marcas</option>
+          </select>
+        </div>
+        <div class="pro-filter-pill">
+          <select id="recupFilterAlmacen" onchange="onRecupFilter()">
+            <option value="">Todos los almacenes</option>
           </select>
         </div>
       </div>
@@ -12561,6 +12572,7 @@ function applyRecupFilters() {
     var estadoF = ((E = document.getElementById("recupFilterEstado")) == null ? void 0 : E.value) || "";
     var grupoF = ((g = document.getElementById("recupFilterGrupo")) == null ? void 0 : g.value) || "";
     var marcaF = ((b = document.getElementById("recupFilterMarca")) == null ? void 0 : b.value) || "";
+    var almacenF = ((k = document.getElementById("recupFilterAlmacen")) == null ? void 0 : k.value) || "";
     var bounds = getDateBounds(h, d);
     recupState.filtered = recupState.all.filter(function(I) {
         if (!I._recupSearch) cacheUiRow(I);
@@ -12568,6 +12580,7 @@ function applyRecupFilters() {
         if (m && (I.vendedor_externo || "") !== m) return !1;
         if (grupoF && (I._grupo || "") !== grupoF) return !1;
         if (marcaF && (I._marca || "") !== marcaF) return !1;
+        if (almacenF && (I.almacen || "") !== almacenF) return !1;
         if (!rowInDateBounds(I, bounds)) return !1;
         if (!cachedSearchIncludes(I._recupSearch, l)) return !1;
         return !0
