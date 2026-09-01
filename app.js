@@ -11518,7 +11518,7 @@ var DATE_FILTER_CONFIG = {
         emptyText: "Fechas"
     }
 };
-var ITEMS_FILTER_IDS = ["itemsSearch", "itemsFilterVendedor", "itemsFilterStock", "itemsFilterGrupo", "itemsFilterMarca", "itemsFilterFechaDesde", "itemsFilterFechaHasta"];
+var ITEMS_FILTER_IDS = ["itemsSearch", "itemsFilterVendedor", "itemsFilterStock", "itemsFilterGrupo", "itemsFilterMarca", "itemsFilterAlmacen", "itemsFilterFechaDesde", "itemsFilterFechaHasta"];
 var RECUP_FILTER_IDS = ["recupSearch", "recupFilterEstado", "recupFilterVendedor", "recupFilterGrupo", "recupFilterMarca", "recupFilterDesde", "recupFilterHasta"];
 var INCID_FILTER_IDS = ["incidSearch", "incidFilterVendedor", "incidFilterGrupo", "incidFilterMarca", "incidFilterDesde", "incidFilterHasta"];
 
@@ -11872,12 +11872,18 @@ async function renderItemsView() {
             var mEl = document.getElementById("itemsFilterMarca");
             if (mEl) { mEl.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map(function(m) { return '<option value="' + esc(m) + '">' + esc(m) + "</option>" }).join("") }
         } catch (catErr) { console.warn("Could not load catalogo:", catErr) }
+        var alEl = document.getElementById("itemsFilterAlmacen");
+        if (alEl) {
+            var almacenes = [...new Set(itemsState.all.map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
+            alEl.innerHTML = '<option value="">Todos los almacenes</option>' + almacenes.map(function(a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>" }).join("");
+        }
         cacheUiRows(itemsState.all);
         restoreItemsFilterState(prevFilters);
         enhanceSelect("itemsFilterGrupo");
         enhanceSelect("itemsFilterMarca");
         enhanceSelect("itemsFilterVendedor");
         enhanceSelect("itemsFilterStock");
+        enhanceSelect("itemsFilterAlmacen");
         applyItemsFilters();
         updateStockFilterColor();
         if (!document.getElementById("itemsBody")._delegated) { document.getElementById("itemsBody")._delegated = true;
@@ -11935,9 +11941,14 @@ function buildItemsHtml() {
             <option value="">Todas las marcas</option>
           </select>
         </div>
+        <div class="pro-filter-pill">
+          <select id="itemsFilterAlmacen" onchange="onItemsFilter()">
+            <option value="">Todos los almacenes</option>
+          </select>
+        </div>
       </div>
     </div>
-    
+
     <div class="items-count" id="itemsCount"></div>
     <div id="itemsBulkBar">
       <span id="itemsBulkCount">0 seleccionados</span>
@@ -12139,13 +12150,15 @@ function applyItemsFilters() {
     let stockFilter = ((L = document.getElementById("itemsFilterStock")) == null ? void 0 : L.value) || "";
     var grupoF = ((k = document.getElementById("itemsFilterGrupo")) == null ? void 0 : k.value) || "";
     var marcaF = ((E = document.getElementById("itemsFilterMarca")) == null ? void 0 : E.value) || "";
-    
+    var almacenF = ((I = document.getElementById("itemsFilterAlmacen")) == null ? void 0 : I.value) || "";
+
     var bounds = getDateBounds(g, b);
     let filtered = itemsState.all.filter(w => {
         if (!w._itemsSearch) cacheUiRow(w);
         if (h && w.estado !== h || d && (w.vendedor_externo || "") !== d) return !1;
         if (grupoF && (w._grupo || "") !== grupoF) return !1;
         if (marcaF && (w._marca || "") !== marcaF) return !1;
+        if (almacenF && (w.almacen || "") !== almacenF) return !1;
         if (!rowInDateBounds(w, bounds)) return !1;
         if (stockFilter === "ok" && w._stockLdalNum < w._cantidadPedidoNum) return !1;
         if (stockFilter === "bajo" && w._stockLdalNum >= w._cantidadPedidoNum) return !1;
