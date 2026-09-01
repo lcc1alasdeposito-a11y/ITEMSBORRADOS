@@ -4680,3 +4680,52 @@
 .pickalm-foot{padding:12px 22px 18px;text-align:right}
 .pickalm-cancel{border:none;background:transparent;color:#64748b;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer}
 .pickalm-cancel:hover{background:#f1f5f9;color:#0f172a}
+
+/* Modal "Asignar almacén" (lista sin almacén) */
+.sam-ov{position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:22px}
+.sam-box{background:#fff;border-radius:18px;width:100%;max-width:960px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 34px 90px -22px rgba(0,0,0,.5)}
+.sam-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;background:linear-gradient(120deg,#1d4ed8,#2563eb);color:#fff}
+.sam-title{font-size:18px;font-weight:800}
+.sam-sub{font-size:12.5px;color:rgba(255,255,255,.85);margin-top:2px}
+.sam-close{width:34px;height:34px;border:none;border-radius:9px;background:rgba(255,255,255,.16);color:#fff;font-size:22px;line-height:1;cursor:pointer;flex-shrink:0}
+.sam-close:hover{background:rgba(255,255,255,.3)}
+.sam-tools{display:flex;align-items:center;gap:14px;padding:14px 22px 8px;flex-wrap:wrap}
+.sam-search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid #e2e8f0;border-radius:10px;color:#94a3b8}
+.sam-search input{flex:1;border:none;outline:none;font:inherit;font-size:13.5px;color:#334155}
+.sam-selall{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap}
+.sam-selall input{width:16px;height:16px;cursor:pointer}
+.sam-assignbar{display:flex;align-items:center;gap:8px;padding:6px 22px 12px;flex-wrap:wrap}
+.sam-ab-lbl{font-size:13px;font-weight:700;color:#334155}
+.sam-ab-lbl b{color:#2563eb}
+.sam-targets{display:inline-flex;gap:6px;flex-wrap:wrap}
+.sam-target{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid #e2e8f0;background:#fff;border-radius:8px;font:inherit;font-size:12.5px;font-weight:800;color:#334155;cursor:pointer;transition:all .15s}
+.sam-target:hover{border-color:#2563eb;background:#eff6ff;color:#1d4ed8}
+.sam-target span{width:9px;height:9px;border-radius:50%}
+.sam-assignbar input{width:88px;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font:inherit;font-size:12.5px;outline:none}
+.sam-assignbar input:focus{border-color:#2563eb}
+#samCustomBtn{border:none;background:#0f172a;color:#fff;font:inherit;font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer}
+.sam-clear{border:none;background:#fef2f2;color:#b91c1c;font:inherit;font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:8px;cursor:pointer;margin-left:auto}
+.sam-clear:hover{background:#fee2e2}
+.sam-list{flex:1;min-height:0;overflow-y:auto;padding:0 22px;border-top:1px solid #eef2f7}
+.sam-row{display:grid;grid-template-columns:26px 1.4fr 2.2fr 1fr 90px;gap:12px;align-items:center;padding:10px 6px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-size:13px}
+.sam-row:hover{background:#f8fafc}
+.sam-row.is-asg{background:#eff6ff}
+.sam-row-check{width:16px;height:16px;cursor:pointer}
+.sam-c{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sam-c-cli{font-weight:700;color:#0f172a}
+.sam-c-mat{color:#475569}
+.sam-c-mat b{color:#0f172a}
+.sam-c-doc{color:#64748b;font-variant-numeric:tabular-nums}
+.sam-c-asg{text-align:right}
+.sam-chip{display:inline-block;background:#2563eb;color:#fff;font-weight:800;font-size:11.5px;padding:3px 10px;border-radius:99px}
+.sam-none{color:#cbd5e1}
+.sam-more{padding:14px;text-align:center;color:#94a3b8;font-size:12.5px}
+.sam-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 22px;border-top:1px solid #eef2f7}
+.sam-pend{font-size:13px;font-weight:700;color:#475569}
+.sam-foot-btns{display:flex;gap:9px}
+.sam-cancel{border:none;background:#f1f5f9;color:#475569;font:inherit;font-size:13px;font-weight:700;padding:10px 18px;border-radius:9px;cursor:pointer}
+.sam-cancel:hover{background:#e2e8f0}
+.sam-save{border:none;background:#2563eb;color:#fff;font:inherit;font-size:13px;font-weight:800;padding:10px 22px;border-radius:9px;cursor:pointer}
+.sam-save:hover:not(:disabled){background:#1d4ed8}
+.sam-save:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:720px){.sam-row{grid-template-columns:24px 1fr 70px}.sam-c-mat,.sam-c-doc{display:none}}

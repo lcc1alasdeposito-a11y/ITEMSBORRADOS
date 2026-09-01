@@ -12026,7 +12026,7 @@ async function renderItemsView() {
         var _noAlm = itemsState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _ban = document.getElementById("itemsNoAlmBanner");
         if (_ban) {
-            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="filterItemsSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
+            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="_openSinAlmModal()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
             else _ban.style.display = "none";
         }
         cacheUiRows(itemsState.all);
@@ -12281,6 +12281,88 @@ async function bulkAsignarAlmacen() {
             renderItemsView();
         } catch (e) { showToast("Error: " + e.message, "error"); }
     });
+}
+// ===== Modal "Asignar almacén" — lista de items sin almacén, selección + asignación =====
+var _sinAlmAssign = {};
+function _sinAlmRows() { return (itemsState.all || []).filter(function(b) { return String(b.almacen || "").trim() === "" }); }
+function _sinAlmUpdateSel() { var n = document.querySelectorAll(".sam-row-check:checked").length; var el = document.getElementById("samSelCount"); if (el) el.textContent = n; }
+function _sinAlmUpdatePend() { var n = Object.keys(_sinAlmAssign).length; var el = document.getElementById("samPend"); if (el) el.textContent = n + " asignados"; var s = document.getElementById("samSave"); if (s) { s.textContent = "Guardar" + (n ? " (" + n + ")" : ""); s.disabled = n === 0; } }
+function _sinAlmAssignChecked(alm) {
+    var cs = document.querySelectorAll(".sam-row-check:checked");
+    if (!cs.length) { if (window.showToast) showToast("Seleccioná al menos un item"); return; }
+    cs.forEach(function(c) {
+        var id = c.getAttribute("data-id"); _sinAlmAssign[id] = alm;
+        var row = c.closest(".sam-row"); if (row) { row.classList.add("is-asg"); var a = row.querySelector(".sam-c-asg"); if (a) a.innerHTML = '<span class="sam-chip">' + esc(alm) + '</span>'; }
+    });
+    _sinAlmUpdatePend();
+}
+function _sinAlmClearChecked() {
+    document.querySelectorAll(".sam-row-check:checked").forEach(function(c) {
+        var id = c.getAttribute("data-id"); delete _sinAlmAssign[id];
+        var row = c.closest(".sam-row"); if (row) { row.classList.remove("is-asg"); var a = row.querySelector(".sam-c-asg"); if (a) a.innerHTML = '<span class="sam-none">—</span>'; }
+    });
+    _sinAlmUpdatePend();
+}
+function _sinAlmRenderList(term) {
+    term = (term || "").toLowerCase().trim();
+    var rows = _sinAlmRows();
+    if (term) rows = rows.filter(function(r) { return ((r.nombre || "") + " " + (r.material || "") + " " + (r.denominacion || "") + " " + (r.doc_vtas || "")).toLowerCase().indexOf(term) >= 0; });
+    var host = document.getElementById("samList"); if (!host) return;
+    var MAX = 1200, shown = rows.slice(0, MAX);
+    host.innerHTML = shown.map(function(r) {
+        var asg = _sinAlmAssign[r.id];
+        return '<label class="sam-row' + (asg ? " is-asg" : "") + '"><input type="checkbox" class="sam-row-check" data-id="' + esc(String(r.id)) + '">' +
+            '<div class="sam-c sam-c-cli">' + esc(r.nombre || "—") + '</div>' +
+            '<div class="sam-c sam-c-mat"><b>' + esc(r.material || "") + '</b> ' + esc(r.denominacion || "") + '</div>' +
+            '<div class="sam-c sam-c-doc">' + esc(r.doc_vtas || "") + '</div>' +
+            '<div class="sam-c sam-c-asg">' + (asg ? '<span class="sam-chip">' + esc(asg) + '</span>' : '<span class="sam-none">—</span>') + '</div>' +
+        '</label>';
+    }).join("") + (rows.length > MAX ? '<div class="sam-more">Mostrando ' + MAX + ' de ' + rows.length + '. Usá el buscador para acotar.</div>' : "");
+    var sub = document.getElementById("samSub"); if (sub) sub.textContent = rows.length + " items sin almacén";
+    var sa = document.getElementById("samSelAll"); if (sa) { sa.checked = false; sa.indeterminate = false; }
+    _sinAlmUpdateSel();
+}
+async function _sinAlmSave() {
+    var ids = Object.keys(_sinAlmAssign); if (!ids.length) return;
+    var btn = document.getElementById("samSave"); if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
+    try {
+        var byAlm = {}; ids.forEach(function(id) { var a = _sinAlmAssign[id]; (byAlm[a] = byAlm[a] || []).push(id); });
+        for (var a in byAlm) { var list = byAlm[a]; for (var i = 0; i < list.length; i += 100) { var batch = list.slice(i, i + 100); var { error } = await getSupabase().from("items_borrados").update({ almacen: a }).in("id", batch); if (error) throw error; } }
+        (itemsState.all || []).forEach(function(r) { if (_sinAlmAssign[r.id] != null) r.almacen = _sinAlmAssign[r.id]; });
+        var n = ids.length; var m = document.getElementById("sinAlmModal"); if (m) m.remove();
+        if (window.showToast) showToast(n + " item(s) asignados", "success", 4000);
+        renderItemsView();
+    } catch (e) { if (btn) { btn.disabled = false; btn.textContent = "Guardar"; } if (window.showToast) showToast("Error: " + e.message, "error"); }
+}
+function _openSinAlmModal() {
+    _sinAlmAssign = {};
+    var old = document.getElementById("sinAlmModal"); if (old) old.remove();
+    var alms = [...new Set((itemsState.all || []).map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
+    ["LDAL", "LDFA", "LDLQ", "LFTD"].forEach(function(k) { if (alms.indexOf(k) < 0) alms.push(k); });
+    var targets = alms.map(function(a) { var c = typeof getAlmacenColor === "function" ? getAlmacenColor(a) : "#2563eb"; return '<button type="button" class="sam-target" data-alm="' + esc(a) + '"><span style="background:' + c + '"></span>' + esc(a) + '</button>'; }).join("");
+    var ov = document.createElement("div"); ov.id = "sinAlmModal"; ov.className = "sam-ov";
+    ov.innerHTML = '<div class="sam-box">' +
+        '<div class="sam-hd"><div><div class="sam-title">Asignar almacén</div><div class="sam-sub" id="samSub"></div></div><button class="sam-close" type="button" aria-label="Cerrar">×</button></div>' +
+        '<div class="sam-tools"><div class="sam-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="samSearch" placeholder="Buscar cliente, material, documento..." autocomplete="off"></div><label class="sam-selall"><input type="checkbox" id="samSelAll"> Seleccionar todos</label></div>' +
+        '<div class="sam-assignbar"><span class="sam-ab-lbl">Asignar a <b id="samSelCount">0</b> sel.:</span><span class="sam-targets">' + targets + '</span><input id="samCustom" placeholder="Otro" maxlength="20" autocomplete="off"><button id="samCustomBtn" type="button">Usar</button><button class="sam-clear" id="samClearAssign" type="button">Limpiar</button></div>' +
+        '<div class="sam-list" id="samList"></div>' +
+        '<div class="sam-foot"><span class="sam-pend" id="samPend">0 asignados</span><div class="sam-foot-btns"><button class="sam-cancel" type="button">Cancelar</button><button class="sam-save" id="samSave" type="button" disabled>Guardar</button></div></div>' +
+    '</div>';
+    document.body.appendChild(ov);
+    function close() { if (window.gsap) gsap.to(ov, { opacity: 0, duration: .15, onComplete: function() { ov.remove() } }); else ov.remove(); }
+    ov.querySelector(".sam-close").addEventListener("click", close);
+    ov.querySelector(".sam-cancel").addEventListener("click", close);
+    ov.addEventListener("click", function(e) { if (e.target === ov) close(); });
+    document.getElementById("samSearch").addEventListener("input", function() { _sinAlmRenderList(this.value); });
+    document.getElementById("samSelAll").addEventListener("change", function() { var v = this.checked; document.querySelectorAll(".sam-row-check").forEach(function(c) { c.checked = v; }); _sinAlmUpdateSel(); });
+    document.getElementById("samList").addEventListener("change", function(e) { if (e.target.classList.contains("sam-row-check")) _sinAlmUpdateSel(); });
+    ov.querySelectorAll(".sam-target").forEach(function(b) { b.addEventListener("click", function() { _sinAlmAssignChecked(b.dataset.alm); }); });
+    document.getElementById("samCustomBtn").addEventListener("click", function() { var v = (document.getElementById("samCustom").value || "").trim().toUpperCase(); if (v) _sinAlmAssignChecked(v); });
+    document.getElementById("samClearAssign").addEventListener("click", _sinAlmClearChecked);
+    document.getElementById("samSave").addEventListener("click", _sinAlmSave);
+    _sinAlmRenderList("");
+    _sinAlmUpdatePend();
+    if (window.gsap) { gsap.from(ov, { opacity: 0, duration: .2 }); gsap.from(ov.querySelector(".sam-box"), { y: 24, scale: .97, opacity: 0, duration: .4, ease: "back.out(1.4)" }); }
 }
 async function bulkMarcarSinStock() {
     var checks = document.querySelectorAll(".item-row-check:checked");
