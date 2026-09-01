@@ -9795,26 +9795,63 @@ async function db_getRecuperadosFlujoItems(scope, limit) {
     });
     return { items: items.slice(0, size), count: count }
 }
+// Calcula las stats del dashboard filtrando por almacén, sin depender de la RPC.
+async function _dashStatsClient(h, vendedor, desde, hasta, almacen) {
+    var t = new Date();
+    var hoy = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    function base(sel, count) {
+        var q = h.from("items_borrados").select(sel, count ? { count: "exact" } : undefined);
+        if (vendedor) q = q.eq("vendedor_externo", vendedor);
+        if (almacen) q = q.eq("almacen", almacen);
+        if (desde) q = q.gte("fecha_carga", desde + "T00:00:00");
+        if (hasta) q = q.lte("fecha_carga", hasta + "T23:59:59");
+        return q;
+    }
+    var s = { total: 0, pendiente: 0, recuperado: 0, no_recuperado: 0, contabilizado: 0, facturado: 0, itemsBorrado: 0, sinStock: 0,
+        montoTotal: 0, montoRecuperado: 0, montoNoRecuperado: 0, montoContabilizado: 0, montoFacturado: 0, montoItemsBorrado: 0, montoSinStock: 0,
+        hoyRecuperado: 0, hoyMontoRecuperado: 0, hoyNoRecuperado: 0, hoyMontoNoRecuperado: 0, hoyContabilizado: 0, hoyMontoContabilizado: 0,
+        hoyFacturado: 0, hoyMontoFacturado: 0, hoyItemsBorrado: 0, hoyMontoItemsBorrado: 0, hoySinStock: 0, hoyMontoSinStock: 0 };
+    var { count: total, error: ce } = await base("id", true);
+    if (ce) throw ce;
+    s.total = total || 0;
+    if (!total) return s;
+    var C = { pendiente: 'pendiente', recuperado: 'recuperado', no_recuperado: 'no_recuperado', contabilizado: 'contabilizado', facturado: 'facturado', items_borrado: 'itemsBorrado', sin_stock: 'sinStock' };
+    var M = { recuperado: 'montoRecuperado', no_recuperado: 'montoNoRecuperado', contabilizado: 'montoContabilizado', facturado: 'montoFacturado', items_borrado: 'montoItemsBorrado', sin_stock: 'montoSinStock' };
+    var H = { recuperado: ['hoyRecuperado', 'hoyMontoRecuperado'], no_recuperado: ['hoyNoRecuperado', 'hoyMontoNoRecuperado'], contabilizado: ['hoyContabilizado', 'hoyMontoContabilizado'], items_borrado: ['hoyItemsBorrado', 'hoyMontoItemsBorrado'], sin_stock: ['hoySinStock', 'hoyMontoSinStock'] };
+    var batch = 1000, proms = [];
+    for (var off = 0; off < total; off += batch) {
+        proms.push(base("estado,total_importe,fecha_gestion,fecha_fact", false).range(off, off + batch - 1));
+    }
+    var res = await Promise.all(proms);
+    res.forEach(function(r) {
+        if (r.error) throw r.error;
+        (r.data || []).forEach(function(row) {
+            var est = row.estado || 'pendiente', mo = Number(row.total_importe) || 0;
+            s.montoTotal += mo;
+            if (C[est]) s[C[est]]++;
+            if (M[est]) s[M[est]] += mo;
+            var gd = row.fecha_gestion ? String(row.fecha_gestion).substring(0, 10) : '';
+            var fd = row.fecha_fact ? String(row.fecha_fact).substring(0, 10) : '';
+            if (est === 'facturado') { if (fd === hoy) { s.hoyFacturado++; s.hoyMontoFacturado += mo; } }
+            else if (gd === hoy && H[est]) { s[H[est][0]]++; s[H[est][1]] += mo; }
+        });
+    });
+    return s;
+}
 async function db_getStats(l, desde, hasta, almacen) {
     requireAuth();
     const h = getSupabase();
 
     // 1 sola llamada al RPC en lugar de 19 queries paralelas
-    var _rpcParams = {
-        p_vendedor: l || null,
-        p_desde: desde || null,
-        p_hasta: hasta || null
-    };
-    if (almacen) _rpcParams.p_almacen = almacen; // requiere RPC actualizada (ver update_rpc_almacen.sql)
-    var _rpc = await h.rpc('get_dashboard_stats', _rpcParams);
-    var s = _rpc.data, rpcErr = _rpc.error;
-    if (rpcErr && almacen) {
-        // La RPC todavía no acepta p_almacen: reintenta sin él (KPIs sin filtrar por almacén)
-        delete _rpcParams.p_almacen;
-        var _rpc2 = await h.rpc('get_dashboard_stats', _rpcParams);
-        s = _rpc2.data; rpcErr = _rpc2.error;
+    var s;
+    if (almacen) {
+        // Con filtro de almacén: cálculo client-side (no requiere cambios en la RPC)
+        s = await _dashStatsClient(h, l, desde, hasta, almacen);
+    } else {
+        var _rpc = await h.rpc('get_dashboard_stats', { p_vendedor: l || null, p_desde: desde || null, p_hasta: hasta || null });
+        if (_rpc.error) throw new Error("Error al obtener stats: " + _rpc.error.message);
+        s = _rpc.data;
     }
-    if (rpcErr) throw new Error("Error al obtener stats: " + rpcErr.message);
 
     var flujoRecuperado        = (s.recuperado || 0) + (s.contabilizado || 0) + (s.facturado || 0),
         montoFlujoRecuperado   = (s.montoRecuperado || 0) + (s.montoContabilizado || 0) + (s.montoFacturado || 0),
