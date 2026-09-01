@@ -12026,7 +12026,7 @@ async function renderItemsView() {
         var _noAlm = itemsState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _ban = document.getElementById("itemsNoAlmBanner");
         if (_ban) {
-            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="_openSinAlmModal()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
+            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="_openSinAlmModal()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; _animNoAlmBanner(_ban); }
             else _ban.style.display = "none";
         }
         cacheUiRows(itemsState.all);
@@ -12281,6 +12281,15 @@ async function bulkAsignarAlmacen() {
             renderItemsView();
         } catch (e) { showToast("Error: " + e.message, "error"); }
     });
+}
+// Animación de entrada del banner "sin almacén" (GSAP)
+function _animNoAlmBanner(ban) {
+    if (!ban || !window.gsap) return;
+    gsap.killTweensOf(ban);
+    gsap.from(ban, { opacity: 0, y: -10, duration: .42, ease: "power3.out", clearProps: "transform,opacity" });
+    var ic = ban.querySelector("svg");
+    if (ic) gsap.fromTo(ic, { scale: 0, rotate: -25 }, { scale: 1, rotate: 0, duration: .5, delay: .08, ease: "back.out(2.2)" });
+    gsap.from(ban.querySelectorAll("button"), { opacity: 0, x: 10, duration: .34, stagger: .07, delay: .12, ease: "back.out(1.6)", clearProps: "all" });
 }
 // ===== Modal "Asignar almacén" — lista de items sin almacén, selección + asignación =====
 var _sinAlmAssign = {};
@@ -12685,7 +12694,7 @@ async function renderRecuperadosView() {
         var _noAlmR = recupState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _banR = document.getElementById("recupNoAlmBanner");
         if (_banR) {
-            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportRecupSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
+            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportRecupSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; _animNoAlmBanner(_banR); }
             else _banR.style.display = "none";
         }
         cacheUiRows(recupState.all);
