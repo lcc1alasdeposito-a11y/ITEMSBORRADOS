@@ -12292,7 +12292,8 @@ function _animNoAlmBanner(ban) {
     gsap.from(ban.querySelectorAll("button"), { opacity: 0, x: 10, duration: .34, stagger: .07, delay: .12, ease: "back.out(1.6)", clearProps: "all" });
 }
 // ===== Importar Excel actualizado (columna Almacén) y actualizar en masa =====
-function _pickAlmacenExcel() {
+function _pickAlmacenExcel(scope) {
+    _sinAlmScope = scope === "recup" ? "recup" : "items";
     var inp = document.createElement("input"); inp.type = "file"; inp.accept = ".xlsx,.xls,.csv";
     inp.onchange = function() { var f = inp.files && inp.files[0]; if (f) _importAlmacenExcel(f); };
     inp.click();
@@ -12316,7 +12317,7 @@ async function _importAlmacenExcel(file) {
         if (docIdx < 0 || matIdx < 0) { showToast("Faltan columnas Doc. Ventas / Material para cruzar", "error"); return; }
         // Índice de items SIN almacén por doc|material|solic
         var idx = {};
-        (itemsState.all || []).forEach(function(it) {
+        (_sinAlmSt().all || []).forEach(function(it) {
             if (String(it.almacen || "").trim() !== "") return;
             var k = String(it.doc_vtas || "").trim() + "|" + String(it.material || "").trim() + "|" + String(it.solic || "").trim();
             (idx[k] = idx[k] || []).push(it);
@@ -12336,14 +12337,17 @@ async function _importAlmacenExcel(file) {
         if (!ok) return;
         var byAlm = {}; ids.forEach(function(id) { var a = assign[id]; (byAlm[a] = byAlm[a] || []).push(id); });
         for (var a in byAlm) { var list = byAlm[a]; for (var j = 0; j < list.length; j += 100) { var batch = list.slice(j, j + 100); var { error } = await getSupabase().from("items_borrados").update({ almacen: a }).in("id", batch); if (error) throw error; } }
-        (itemsState.all || []).forEach(function(it) { if (assign[it.id] != null) it.almacen = assign[it.id]; });
+        (_sinAlmSt().all || []).forEach(function(it) { if (assign[it.id] != null) it.almacen = assign[it.id]; });
         showToast(ids.length + " items actualizados desde el Excel" + (sinMatch ? " · " + sinMatch + " sin match" : ""), "success", 5000);
-        renderItemsView();
+        _sinAlmReRender();
     } catch (e) { showToast("Error al importar: " + e.message, "error"); }
 }
 // ===== Modal "Asignar almacén" — lista de items sin almacén, selección + asignación =====
 var _sinAlmAssign = {};
-function _sinAlmRows() { return (itemsState.all || []).filter(function(b) { return String(b.almacen || "").trim() === "" }); }
+var _sinAlmScope = "items"; // "items" (pendientes) | "recup" (gestionados)
+function _sinAlmSt() { return _sinAlmScope === "recup" ? recupState : itemsState; }
+function _sinAlmReRender() { if (_sinAlmScope === "recup") renderRecuperadosView(); else renderItemsView(); }
+function _sinAlmRows() { return (_sinAlmSt().all || []).filter(function(b) { return String(b.almacen || "").trim() === "" }); }
 function _sinAlmUpdateSel() { var n = document.querySelectorAll(".sam-row-check:checked").length; var el = document.getElementById("samSelCount"); if (el) el.textContent = n; }
 function _sinAlmUpdatePend() { var n = Object.keys(_sinAlmAssign).length; var el = document.getElementById("samPend"); if (el) el.textContent = n + " asignados"; var s = document.getElementById("samSave"); if (s) { s.textContent = "Guardar" + (n ? " (" + n + ")" : ""); s.disabled = n === 0; } }
 function _sinAlmAssignChecked(alm) {
@@ -12387,16 +12391,17 @@ async function _sinAlmSave() {
     try {
         var byAlm = {}; ids.forEach(function(id) { var a = _sinAlmAssign[id]; (byAlm[a] = byAlm[a] || []).push(id); });
         for (var a in byAlm) { var list = byAlm[a]; for (var i = 0; i < list.length; i += 100) { var batch = list.slice(i, i + 100); var { error } = await getSupabase().from("items_borrados").update({ almacen: a }).in("id", batch); if (error) throw error; } }
-        (itemsState.all || []).forEach(function(r) { if (_sinAlmAssign[r.id] != null) r.almacen = _sinAlmAssign[r.id]; });
+        (_sinAlmSt().all || []).forEach(function(r) { if (_sinAlmAssign[r.id] != null) r.almacen = _sinAlmAssign[r.id]; });
         var n = ids.length; var m = document.getElementById("sinAlmModal"); if (m) m.remove();
         if (window.showToast) showToast(n + " item(s) asignados", "success", 4000);
-        renderItemsView();
+        _sinAlmReRender();
     } catch (e) { if (btn) { btn.disabled = false; btn.textContent = "Guardar"; } if (window.showToast) showToast("Error: " + e.message, "error"); }
 }
-function _openSinAlmModal() {
+function _openSinAlmModal(scope) {
+    _sinAlmScope = scope === "recup" ? "recup" : "items";
     _sinAlmAssign = {};
     var old = document.getElementById("sinAlmModal"); if (old) old.remove();
-    var alms = [...new Set((itemsState.all || []).map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
+    var alms = [...new Set((_sinAlmSt().all || []).map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
     ["LDAL", "LDFA", "LDLQ", "LFTD"].forEach(function(k) { if (alms.indexOf(k) < 0) alms.push(k); });
     var targets = alms.map(function(a) { var c = typeof getAlmacenColor === "function" ? getAlmacenColor(a) : "#2563eb"; return '<button type="button" class="sam-target" data-alm="' + esc(a) + '"><span style="background:' + c + '"></span>' + esc(a) + '</button>'; }).join("");
     var ov = document.createElement("div"); ov.id = "sinAlmModal"; ov.className = "sam-ov";
@@ -12744,7 +12749,7 @@ async function renderRecuperadosView() {
         var _noAlmR = recupState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _banR = document.getElementById("recupNoAlmBanner");
         if (_banR) {
-            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportRecupSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; _animNoAlmBanner(_banR); }
+            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="_openSinAlmModal(\'recup\')">Ver lista</button><button type="button" class="nab-exp" onclick="exportRecupSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button><button type="button" class="nab-imp" onclick="_pickAlmacenExcel(\'recup\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar</button>'; _animNoAlmBanner(_banR); }
             else _banR.style.display = "none";
         }
         cacheUiRows(recupState.all);
