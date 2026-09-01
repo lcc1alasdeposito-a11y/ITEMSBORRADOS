@@ -10870,6 +10870,26 @@ function _setEnhSelect(id, value, label) {
 }
 function filterItemsSinAlmacen() { _setEnhSelect("itemsFilterAlmacen", "__SIN__", "Sin almacén"); if (typeof onItemsFilter === "function") onItemsFilter(); }
 function filterRecupSinAlmacen() { _setEnhSelect("recupFilterAlmacen", "__SIN__", "Sin almacén"); if (typeof onRecupFilter === "function") onRecupFilter(); }
+// Exporta a Excel los items sin almacén (SheetJS, ya cargado).
+function _exportSinAlmacenExcel(rows, filename) {
+    if (typeof XLSX === "undefined") { if (window.showToast) showToast("No se pudo cargar el exportador"); else alert("No se pudo cargar el exportador"); return; }
+    var data = [["Fecha Carga", "Doc. Ventas", "Material", "Denominación", "Cliente", "Solic.", "Vendedor Externo", "Cantidad", "Total Importe", "Estado"]];
+    rows.forEach(function(r) {
+        data.push([
+            r.fecha_carga ? String(r.fecha_carga).substring(0, 10) : "",
+            r.doc_vtas || "", r.material || "", r.denominacion || "", r.nombre || "", r.solic || "", r.vendedor_externo || "",
+            Number(r.cantidad != null ? r.cantidad : (r.cant || 0)) || 0, Number(r.total_importe || 0) || 0, r.estado || ""
+        ]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    ws["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 34 }, { wch: 30 }, { wch: 14 }, { wch: 22 }, { wch: 10 }, { wch: 16 }, { wch: 16 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sin almacen");
+    XLSX.writeFile(wb, filename);
+    if (window.showToast) showToast("Exportados " + rows.length + " items sin almacén");
+}
+function exportItemsSinAlmacen() { _exportSinAlmacenExcel((itemsState.all || []).filter(function(b) { return String(b.almacen || "").trim() === "" }), "items_sin_almacen.xlsx"); }
+function exportRecupSinAlmacen() { _exportSinAlmacenExcel((recupState.all || []).filter(function(b) { return String(b.almacen || "").trim() === "" }), "pedidos_sin_almacen.xlsx"); }
 function selectDashAlm(v) { _dashAlmacen = v || ""; closeDashAlmDropdown(); renderDashboard(); }
 function _dashAlmOutside(e) { var dd = document.getElementById("dashAlmDD"); if (dd && !dd.contains(e.target)) closeDashAlmDropdown(); }
 function openDashAlmDropdown() {
@@ -12006,7 +12026,7 @@ async function renderItemsView() {
         var _noAlm = itemsState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _ban = document.getElementById("itemsNoAlmBanner");
         if (_ban) {
-            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="filterItemsSinAlmacen()">Ver lista</button>'; }
+            if (_noAlm > 0) { _ban.style.display = ""; _ban.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlm) + '</b> items sin almacén asignado</span><button type="button" onclick="filterItemsSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportItemsSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
             else _ban.style.display = "none";
         }
         cacheUiRows(itemsState.all);
@@ -12544,7 +12564,7 @@ async function renderRecuperadosView() {
         var _noAlmR = recupState.all.filter(function(b) { return String(b.almacen || "").trim() === "" }).length;
         var _banR = document.getElementById("recupNoAlmBanner");
         if (_banR) {
-            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button>'; }
+            if (_noAlmR > 0) { _banR.style.display = ""; _banR.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span><b>' + fmtInt(_noAlmR) + '</b> pedidos sin almacén asignado</span><button type="button" onclick="filterRecupSinAlmacen()">Ver lista</button><button type="button" class="nab-exp" onclick="exportRecupSinAlmacen()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>'; }
             else _banR.style.display = "none";
         }
         cacheUiRows(recupState.all);
