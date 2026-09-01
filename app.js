@@ -9590,7 +9590,7 @@ async function db_getItems(l) {
     if (b > 0) {
         var d = sup.from("items_borrados").select("*", { count: "exact" });
         if (l.search) { const $ = l.search; d = d.or("doc_vtas.ilike.%" + $ + "%,material.ilike.%" + $ + "%,nombre.ilike.%" + $ + "%,solic.ilike.%" + $ + "%,denominacion.ilike.%" + $ + "%") }
-        l.estado && (d = d.eq("estado", l.estado)), l.vendedor && (d = d.eq("vendedor_externo", l.vendedor)), l.almacen && (d = d.eq("almacen", l.almacen)), l.fecha_desde && (d = d.gte("fecha_carga", l.fecha_desde)), l.fecha_hasta && (d = d.lte("fecha_carga", l.fecha_hasta));
+        l.estado && (d = d.eq("estado", l.estado)), l.vendedor && (d = d.eq("vendedor_externo", l.vendedor)), l.almacen && (d = _applyAlmFilter(d, l.almacen)), l.fecha_desde && (d = d.gte("fecha_carga", l.fecha_desde)), l.fecha_hasta && (d = d.lte("fecha_carga", l.fecha_hasta));
         const g = l.page || 1, $ = (g - 1) * b, L = $ + b - 1;
         d = d.range($, L);
         const { data: k, error: E, count: I } = await d.order("fecha_carga", { ascending: !1 });
@@ -9697,7 +9697,7 @@ async function db_getChartData(desde, hasta, almacen) {
     var qCount = sup.from("items_borrados").select("id", { count: "exact" });
     qCount = qCount.gte("fecha_carga", desde + "T00:00:00");
     qCount = qCount.lte("fecha_carga", hasta + "T23:59:59");
-    if (almacen) qCount = qCount.eq("almacen", almacen);
+    if (almacen) qCount = _applyAlmFilter(qCount, almacen);
     var { count: totalCount, error: countErr } = await qCount;
     if (countErr) throw countErr;
     if (!totalCount) return [];
@@ -9706,7 +9706,7 @@ async function db_getChartData(desde, hasta, almacen) {
         var q = sup.from("items_borrados").select("fecha_carga, total_importe");
         q = q.gte("fecha_carga", desde + "T00:00:00");
         q = q.lte("fecha_carga", hasta + "T23:59:59");
-        if (almacen) q = q.eq("almacen", almacen);
+        if (almacen) q = _applyAlmFilter(q, almacen);
         batchPromises.push(q.range(offset, offset + batchSize - 1).order("fecha_carga", { ascending: !0 }))
     }
     var batchResults = await Promise.all(batchPromises);
@@ -9795,6 +9795,12 @@ async function db_getRecuperadosFlujoItems(scope, limit) {
     });
     return { items: items.slice(0, size), count: count }
 }
+// Aplica el filtro de almacén a una query. "__SIN__" = items sin almacén (null o vacío).
+function _applyAlmFilter(q, alm) {
+    if (!alm) return q;
+    if (alm === "__SIN__") return q.or("almacen.is.null,almacen.eq.");
+    return q.eq("almacen", alm);
+}
 // Calcula las stats del dashboard filtrando por almacén, sin depender de la RPC.
 async function _dashStatsClient(h, vendedor, desde, hasta, almacen) {
     var t = new Date();
@@ -9802,7 +9808,7 @@ async function _dashStatsClient(h, vendedor, desde, hasta, almacen) {
     function base(sel, count) {
         var q = h.from("items_borrados").select(sel, count ? { count: "exact" } : undefined);
         if (vendedor) q = q.eq("vendedor_externo", vendedor);
-        if (almacen) q = q.eq("almacen", almacen);
+        q = _applyAlmFilter(q, almacen);
         if (desde) q = q.gte("fecha_carga", desde + "T00:00:00");
         if (hasta) q = q.lte("fecha_carga", hasta + "T23:59:59");
         return q;
@@ -9820,7 +9826,7 @@ async function _dashStatsClient(h, vendedor, desde, hasta, almacen) {
     var H = { recuperado: ['hoyRecuperado', 'hoyMontoRecuperado'], no_recuperado: ['hoyNoRecuperado', 'hoyMontoNoRecuperado'], contabilizado: ['hoyContabilizado', 'hoyMontoContabilizado'], items_borrado: ['hoyItemsBorrado', 'hoyMontoItemsBorrado'], sin_stock: ['hoySinStock', 'hoyMontoSinStock'] };
     var batch = 1000, proms = [];
     for (var off = 0; off < total; off += batch) {
-        proms.push(base("estado,total_importe,fecha_gestion,fecha_fact", false).range(off, off + batch - 1));
+        proms.push(base("estado,total_importe,fecha_gestion,fecha_fact", false).order("id", { ascending: true }).range(off, off + batch - 1));
     }
     var res = await Promise.all(proms);
     res.forEach(function(r) {
@@ -10852,6 +10858,7 @@ function setDashLoading(root, isLoading) {
 
 var _dashAlmacen = "";
 var _dashAlmacenList = [];
+var _dashAlmacenHasBlank = false;
 function onDashAlmacen() { var s = document.getElementById("dashFilterAlmacen"); _dashAlmacen = s ? s.value : ""; renderDashboard(); }
 function selectDashAlm(v) { _dashAlmacen = v || ""; closeDashAlmDropdown(); renderDashboard(); }
 function _dashAlmOutside(e) { var dd = document.getElementById("dashAlmDD"); if (dd && !dd.contains(e.target)) closeDashAlmDropdown(); }
@@ -10906,23 +10913,26 @@ async function renderDashboard() {
         ]);
         if (renderSeq !== _dashRenderSeq) return;
         // Lista de almacenes disponibles (del rango de fechas, sin filtrar por almacen)
-        var _almSet = {};
-        (venRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; });
-        (cliRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; });
+        var _almSet = {}, _almHasBlank = false;
+        (venRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; else _almHasBlank = true; });
+        (cliRows.data || []).forEach(function(r) { var a = String(r.almacen || "").trim(); if (a) _almSet[a] = 1; else _almHasBlank = true; });
         _dashAlmacenList = Object.keys(_almSet).sort();
-        if (_dashAlmacen && _dashAlmacenList.indexOf(_dashAlmacen) < 0) _dashAlmacen = "";
+        _dashAlmacenHasBlank = _almHasBlank;
+        if (_dashAlmacen && _dashAlmacen !== "__SIN__" && _dashAlmacenList.indexOf(_dashAlmacen) < 0) _dashAlmacen = "";
+        if (_dashAlmacen === "__SIN__" && !_almHasBlank) _dashAlmacen = "";
+        function _almMatch(r) { if (!_dashAlmacen) return true; var a = String(r.almacen || "").trim(); return _dashAlmacen === "__SIN__" ? a === "" : a === _dashAlmacen; }
         var venMap = {}, cliMap = {};
         var RES_ESTS = ["pendiente", "recuperado", "contabilizado", "facturado", "no_recuperado", "sin_stock"];
         function mkMapEntry() { var e = { items: 0, monto: 0, est: {} }; RES_ESTS.forEach(function(s) { e.est[s] = { items: 0, monto: 0 }; }); return e; }
         (venRows.data || []).forEach(function(r) {
-            if (_dashAlmacen && String(r.almacen || "").trim() !== _dashAlmacen) return;
+            if (!_almMatch(r)) return;
             var v = r.vendedor_externo || "Sin Vendedor";
             venMap[v] = venMap[v] || mkMapEntry();
             venMap[v].items++; venMap[v].monto += Number(r.total_importe) || 0;
             var es = r.estado || "pendiente"; if (venMap[v].est[es]) { venMap[v].est[es].items++; venMap[v].est[es].monto += Number(r.total_importe) || 0; }
         });
         (cliRows.data || []).forEach(function(r) {
-            if (_dashAlmacen && String(r.almacen || "").trim() !== _dashAlmacen) return;
+            if (!_almMatch(r)) return;
             var c = r.nombre || "Sin Cliente";
             cliMap[c] = cliMap[c] || mkMapEntry();
             cliMap[c].items++; cliMap[c].monto += Number(r.total_importe) || 0;
@@ -11213,10 +11223,11 @@ function buildDashHtml(l, venList, cliList, chartData) {
         '<button class="dash-all-months-btn' + (isAllMonths ? ' active' : '') + '" type="button" onclick="showAllDashMonths()" title="Mostrar todos los meses" aria-label="Mostrar todos los meses">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h8M8 18h5"/></svg>Todo</button>' +
         (function() {
-            var curColor = _dashAlmacen && typeof getAlmacenColor === 'function' ? getAlmacenColor(_dashAlmacen) : '';
-            var curLabel = _dashAlmacen ? esc(_dashAlmacen) : 'Todos los almacenes';
+            var curColor = _dashAlmacen === '__SIN__' ? '#cbd5e1' : (_dashAlmacen && typeof getAlmacenColor === 'function' ? getAlmacenColor(_dashAlmacen) : '');
+            var curLabel = _dashAlmacen === '__SIN__' ? 'Sin almacén' : (_dashAlmacen ? esc(_dashAlmacen) : 'Todos los almacenes');
             var opts = '<button type="button" class="dash-alm-opt' + (_dashAlmacen === '' ? ' on' : '') + '" data-alm="" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:#94a3b8"></span>Todos los almacenes</button>' +
-                _dashAlmacenList.map(function(a) { var col = typeof getAlmacenColor === 'function' ? getAlmacenColor(a) : '#2563eb'; return '<button type="button" class="dash-alm-opt' + (_dashAlmacen === a ? ' on' : '') + '" data-alm="' + escAttr(a) + '" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:' + col + '"></span>' + esc(a) + '</button>'; }).join('');
+                _dashAlmacenList.map(function(a) { var col = typeof getAlmacenColor === 'function' ? getAlmacenColor(a) : '#2563eb'; return '<button type="button" class="dash-alm-opt' + (_dashAlmacen === a ? ' on' : '') + '" data-alm="' + escAttr(a) + '" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:' + col + '"></span>' + esc(a) + '</button>'; }).join('') +
+                (_dashAlmacenHasBlank ? '<button type="button" class="dash-alm-opt' + (_dashAlmacen === '__SIN__' ? ' on' : '') + '" data-alm="__SIN__" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:#cbd5e1"></span>Sin almacén</button>' : '');
             return '<div class="dash-alm-dd" id="dashAlmDD">' +
                 '<button type="button" class="dash-alm-trigger" onclick="toggleDashAlmDropdown(event)">' +
                     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#64748b"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' +
