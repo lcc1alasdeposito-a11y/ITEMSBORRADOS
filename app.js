@@ -10816,6 +10816,34 @@ function setDashLoading(root, isLoading) {
 var _dashAlmacen = "";
 var _dashAlmacenList = [];
 function onDashAlmacen() { var s = document.getElementById("dashFilterAlmacen"); _dashAlmacen = s ? s.value : ""; renderDashboard(); }
+function selectDashAlm(v) { _dashAlmacen = v || ""; closeDashAlmDropdown(); renderDashboard(); }
+function _dashAlmOutside(e) { var dd = document.getElementById("dashAlmDD"); if (dd && !dd.contains(e.target)) closeDashAlmDropdown(); }
+function openDashAlmDropdown() {
+    var dd = document.getElementById("dashAlmDD"), menu = document.getElementById("dashAlmMenu");
+    if (!dd || !menu) return;
+    dd.classList.add("open"); menu.style.display = "block";
+    if (window.gsap) {
+        gsap.killTweensOf(menu);
+        gsap.fromTo(menu, { opacity: 0, y: -8, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .28, ease: "back.out(1.6)" });
+        gsap.fromTo(menu.querySelectorAll(".dash-alm-opt"), { opacity: 0, x: -6 }, { opacity: 1, x: 0, duration: .22, stagger: .03, delay: .04, ease: "power2.out", clearProps: "transform,opacity" });
+    }
+    setTimeout(function() { document.addEventListener("click", _dashAlmOutside); }, 0);
+}
+function closeDashAlmDropdown() {
+    var dd = document.getElementById("dashAlmDD"), menu = document.getElementById("dashAlmMenu");
+    if (!dd || !menu) return;
+    document.removeEventListener("click", _dashAlmOutside);
+    if (window.gsap) {
+        gsap.killTweensOf(menu);
+        gsap.to(menu, { opacity: 0, y: -8, scale: .97, duration: .17, ease: "power2.in", onComplete: function() { menu.style.display = "none"; dd.classList.remove("open"); gsap.set(menu, { clearProps: "all" }); } });
+    } else { menu.style.display = "none"; dd.classList.remove("open"); }
+}
+function toggleDashAlmDropdown(e) {
+    if (e) e.stopPropagation();
+    var dd = document.getElementById("dashAlmDD");
+    if (!dd) return;
+    if (dd.classList.contains("open")) closeDashAlmDropdown(); else openDashAlmDropdown();
+}
 async function renderDashboard() {
     const l = document.getElementById("vwDashboard");
     var renderSeq = ++_dashRenderSeq;
@@ -11147,7 +11175,21 @@ function buildDashHtml(l, venList, cliList, chartData) {
         '</div>' +
         '<button class="dash-all-months-btn' + (isAllMonths ? ' active' : '') + '" type="button" onclick="showAllDashMonths()" title="Mostrar todos los meses" aria-label="Mostrar todos los meses">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h8M8 18h5"/></svg>Todo</button>' +
-        '<div class="dash-alm-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><select id="dashFilterAlmacen" class="resumen-search-select" onchange="onDashAlmacen()"><option value="">Todos los almacenes</option>' + _dashAlmacenList.map(function(a) { return '<option value="' + escAttr(a) + '"' + (_dashAlmacen === a ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('') + '</select></div>' +
+        (function() {
+            var curColor = _dashAlmacen && typeof getAlmacenColor === 'function' ? getAlmacenColor(_dashAlmacen) : '';
+            var curLabel = _dashAlmacen ? esc(_dashAlmacen) : 'Todos los almacenes';
+            var opts = '<button type="button" class="dash-alm-opt' + (_dashAlmacen === '' ? ' on' : '') + '" data-alm="" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:#94a3b8"></span>Todos los almacenes</button>' +
+                _dashAlmacenList.map(function(a) { var col = typeof getAlmacenColor === 'function' ? getAlmacenColor(a) : '#2563eb'; return '<button type="button" class="dash-alm-opt' + (_dashAlmacen === a ? ' on' : '') + '" data-alm="' + escAttr(a) + '" onclick="selectDashAlm(this.dataset.alm)"><span class="dash-alm-dot" style="background:' + col + '"></span>' + esc(a) + '</button>'; }).join('');
+            return '<div class="dash-alm-dd" id="dashAlmDD">' +
+                '<button type="button" class="dash-alm-trigger" onclick="toggleDashAlmDropdown(event)">' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:#64748b"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' +
+                    (curColor ? '<span class="dash-alm-dot" style="background:' + curColor + '"></span>' : '') +
+                    '<span class="dash-alm-cur">' + curLabel + '</span>' +
+                    '<svg class="dash-alm-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+                '</button>' +
+                '<div class="dash-alm-menu" id="dashAlmMenu">' + opts + '</div>' +
+            '</div>';
+        })() +
         '<button id="btnExportarExcel" class="dash-export-btn" type="button" onclick="exportarExcelDashboard()" title="Exportar pedidos a Excel por estado">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
             'Exportar Excel' +
