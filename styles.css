@@ -4661,3 +4661,22 @@
 .no-alm-banner button:hover{background:#b45309}
 .no-alm-banner .nab-exp{display:inline-flex;align-items:center;gap:5px;background:#fff;color:#b45309;border:1px solid #fcd34d}
 .no-alm-banner .nab-exp:hover{background:#fef3c7;border-color:#f59e0b}
+
+/* Bulk: asignar almacén */
+.bulk-btn-alm{border:none;background:#2563eb;color:#fff;font:inherit;font-size:13px;font-weight:700;padding:8px 15px;border-radius:8px;cursor:pointer;transition:background .15s}
+.bulk-btn-alm:hover{background:#1d4ed8}
+.pickalm-ov{position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px}
+.pickalm-box{background:#fff;border-radius:18px;width:100%;max-width:440px;box-shadow:0 30px 80px -20px rgba(0,0,0,.45);overflow:hidden}
+.pickalm-hd{padding:18px 22px;font-size:16px;font-weight:800;color:#0f172a;border-bottom:1px solid #eef2f7}
+.pickalm-hd b{color:#2563eb}
+.pickalm-opts{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:18px 22px 6px}
+.pickalm-opt{display:flex;align-items:center;gap:9px;padding:12px 14px;border:1.5px solid #e2e8f0;background:#fff;border-radius:11px;font:inherit;font-size:14px;font-weight:700;color:#334155;cursor:pointer;transition:all .15s}
+.pickalm-opt:hover{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;transform:translateY(-1px)}
+.pickalm-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.pickalm-custom{display:flex;gap:8px;padding:10px 22px 6px}
+.pickalm-custom input{flex:1;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font:inherit;font-size:13px;outline:none}
+.pickalm-custom input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.pickalm-custom button{border:none;background:#0f172a;color:#fff;font:inherit;font-size:13px;font-weight:700;padding:0 16px;border-radius:9px;cursor:pointer}
+.pickalm-foot{padding:12px 22px 18px;text-align:right}
+.pickalm-cancel{border:none;background:transparent;color:#64748b;font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer}
+.pickalm-cancel:hover{background:#f1f5f9;color:#0f172a}

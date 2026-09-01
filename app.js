@@ -12105,6 +12105,7 @@ function buildItemsHtml() {
     <div class="items-count" id="itemsCount"></div>
     <div id="itemsBulkBar">
       <span id="itemsBulkCount">0 seleccionados</span>
+      <button onclick="bulkAsignarAlmacen()" class="bulk-btn-alm">🏠 Asignar almacén</button>
       <button onclick="bulkMarcarSinStock()" class="bulk-btn-sinstock">⊘ Marcar Sin Stock</button>
       <button onclick="bulkDeselectAll()" class="bulk-btn-cancel">Cancelar</button>
     </div>
@@ -12243,6 +12244,44 @@ function bulkDeselectAll() {
     if (bar) bar.style.display = "none";
 }
 
+// Modal para elegir un almacén (bulk-assign). cb(valor) o cb(null) si cancela.
+function _pickAlmacen(count, cb) {
+    var alms = [...new Set((itemsState.all || []).map(function(b) { return String(b.almacen || "").trim() }).filter(Boolean))].sort();
+    ["LDAL", "LDFA", "LDLQ", "LFTD"].forEach(function(k) { if (alms.indexOf(k) < 0) alms.push(k); });
+    var old = document.getElementById("pickAlmModal"); if (old) old.remove();
+    var ov = document.createElement("div"); ov.id = "pickAlmModal"; ov.className = "pickalm-ov";
+    ov.innerHTML = '<div class="pickalm-box"><div class="pickalm-hd">Asignar almacén a <b>' + count + '</b> item(s)</div>' +
+        '<div class="pickalm-opts">' + alms.map(function(a) { var c = typeof getAlmacenColor === "function" ? getAlmacenColor(a) : "#2563eb"; return '<button type="button" class="pickalm-opt" data-alm="' + esc(a) + '"><span class="pickalm-dot" style="background:' + c + '"></span>' + esc(a) + '</button>'; }).join("") + '</div>' +
+        '<div class="pickalm-custom"><input type="text" id="pickAlmInput" placeholder="Otro código..." maxlength="20" autocomplete="off"><button type="button" id="pickAlmCustomBtn">Usar</button></div>' +
+        '<div class="pickalm-foot"><button type="button" class="pickalm-cancel">Cancelar</button></div></div>';
+    document.body.appendChild(ov);
+    function close() { if (window.gsap) { gsap.to(ov, { opacity: 0, duration: .15, onComplete: function() { ov.remove() } }); } else ov.remove(); }
+    ov.addEventListener("click", function(e) { if (e.target === ov) close(); });
+    ov.querySelector(".pickalm-cancel").addEventListener("click", function() { close(); cb(null); });
+    ov.querySelectorAll(".pickalm-opt").forEach(function(b) { b.addEventListener("click", function() { var v = b.dataset.alm; close(); cb(v); }); });
+    ov.querySelector("#pickAlmCustomBtn").addEventListener("click", function() { var v = (document.getElementById("pickAlmInput").value || "").trim().toUpperCase(); if (!v) return; close(); cb(v); });
+    if (window.gsap) { gsap.from(ov, { opacity: 0, duration: .2 }); gsap.from(ov.querySelector(".pickalm-box"), { y: 22, scale: .96, opacity: 0, duration: .38, ease: "back.out(1.5)" }); gsap.from(ov.querySelectorAll(".pickalm-opt"), { opacity: 0, y: 8, duration: .25, stagger: .03, delay: .12, ease: "power2.out", clearProps: "all" }); }
+}
+async function bulkAsignarAlmacen() {
+    var checks = document.querySelectorAll(".item-row-check:checked");
+    var ids = Array.prototype.slice.call(checks).map(function(c) { return c.getAttribute("data-id"); });
+    if (ids.length === 0) return;
+    _pickAlmacen(ids.length, async function(alm) {
+        if (!alm) return;
+        try {
+            for (var i = 0; i < ids.length; i += 100) {
+                var batch = ids.slice(i, i + 100);
+                var { error } = await getSupabase().from("items_borrados").update({ almacen: alm }).in("id", batch);
+                if (error) throw error;
+            }
+            var idSet = new Set(ids.map(String));
+            (itemsState.all || []).forEach(function(r) { if (idSet.has(String(r.id))) r.almacen = alm; });
+            bulkDeselectAll();
+            showToast(ids.length + " item(s) asignados a " + alm, "success", 4000);
+            renderItemsView();
+        } catch (e) { showToast("Error: " + e.message, "error"); }
+    });
+}
 async function bulkMarcarSinStock() {
     var checks = document.querySelectorAll(".item-row-check:checked");
     var ids = Array.prototype.slice.call(checks).map(function(c) { return c.getAttribute("data-id"); });
